@@ -1,0 +1,113 @@
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>new Intl.NumberFormat('cs-CZ',{style:'currency',currency:'CZK',maximumFractionDigits:2}).format(n);
+const localDate=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+const today=()=>localDate(new Date()); const date=d=>new Intl.DateTimeFormat('cs-CZ').format(new Date(d+'T12:00:00'));
+const state=a=>a.reflection?.trim()?'done':a.activity_date<=today()?'pending':'planned';
+const labels={done:'Zreflektováno',pending:'Čeká na reflexi',planned:'Plánováno'};
+const safeUrl=s=>{try{const u=new URL(s);return ['https:','http:'].includes(u.protocol)?u.href:''}catch{return ''}};
+const appReturnUrl=new URL('./',location.href).href;
+const config=window.DVPP_CONFIG||{};const demo=!config.supabaseUrl||!config.supabasePublishableKey;
+const authStorageKey=demo?'':`sb-${new URL(config.supabaseUrl).hostname.split('.')[0]}-auth-token`;
+let signingOut=false;
+let db=null,user=demo?{id:'demo-me'}:null,activities=[],profiles=[],view='cards',tab='board',register=false,removeId=null;
+const demoProfiles=[{id:'demo-me',display_name:'Jana Nováková'},{id:'demo-2',display_name:'Petr Svoboda'},{id:'demo-3',display_name:'Lucie Dvořáková'}];
+const shift=n=>{const d=new Date();d.setDate(d.getDate()+n);return localDate(d)};
+const samples=[
+{id:'demo-1',user_id:'demo-me',title:'AI jako partner při přípravě vzdělávání',activity_date:shift(12),format:'Webinář',location:'Online · Microsoft Teams',url:'',description:'Praktické využití umělé inteligence při přípravě vzdělávacích programů. Chci si osvojit tvorbu zadání a získat inspiraci pro práci garantky DVPP.',reflection:'',cost:1490},
+{id:'demo-2',user_id:'demo-2',title:'Jak vést smysluplnou reflexi',activity_date:shift(-4),format:'Seminář',location:'Plzeň · místo bude upřesněno',url:'',description:'Metody reflexe a vedení rozhovoru po vzdělávací aktivitě. Cílem je přenést nové techniky do spolupráce s lektory.',reflection:'Největším přínosem bylo rozlišení popisu zážitku a skutečné reflexe. V příštím programu vyzkouším tři otevřené otázky a krátký reflektivní deník.',cost:2200},
+{id:'demo-3',user_id:'demo-3',title:'Zpětná vazba, která pomáhá růst',activity_date:shift(-9),format:'Článek',location:'Online · odborný článek',url:'',description:'Samostudium principů formativní zpětné vazby a jejich využití při evaluaci vzdělávání.',reflection:'',cost:0},
+{id:'demo-4',user_id:'demo-me',title:'Facilitace skupin a práce s diskusí',activity_date:shift(-17),format:'Online kurz',location:'Online · samostudium',url:'',description:'Rozvoj facilitačních dovedností pro vedení setkání garantů a spolupráci při přípravě vzdělávacích aktivit.',reflection:'Vyzkoušela jsem strukturované střídání individuální práce a sdílení ve dvojicích. Příště ponechám více času na společné závěry.',cost:890},
+{id:'demo-5',user_id:'demo-2',title:'Wellbeing ve vzdělávání dospělých',activity_date:shift(26),format:'Konference',location:'Praha · místo bude upřesněno',url:'',description:'Inspirace pro podporu psychické pohody účastníků i lektorů. Hledám konkrétní postupy pro bezpečné prostředí při učení.',reflection:'',cost:3200},
+{id:'demo-6',user_id:'demo-3',title:'Od vzdělávacích potřeb k dobrému programu',activity_date:shift(7),format:'Seminář',location:'KCV · prezenční setkání',url:'',description:'Jak mapovat skutečné potřeby škol a promítnout je do cílů vzdělávacího programu.',reflection:'',cost:0}];
+const person=id=>profiles.find(p=>p.id===id)?.display_name||'Jméno není doplněné';
+const initials=name=>name.split(/\s+/).slice(0,2).map(s=>s[0]).join('');
+function toast(s){$('#toast').textContent=s;$('#toast').hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>$('#toast').hidden=true,4000)}
+function filtered(){const q=$('#search').value.toLocaleLowerCase('cs');const owner=$('#owner').value;const status=$('#status').value;let from=$('#from').value,to=$('#to').value;const now=new Date();switch($('#period').value){case'all':from=to='';break;case'year':from=now.getFullYear()+'-01-01';to=now.getFullYear()+'-12-31';break;case'month':from=localDate(new Date(now.getFullYear(),now.getMonth(),1));to=localDate(new Date(now.getFullYear(),now.getMonth()+1,0));break;case'school':{const y=now.getMonth()>=8?now.getFullYear():now.getFullYear()-1;from=y+'-09-01';to=(y+1)+'-08-31';}}return activities.filter(a=>(!owner||a.user_id===owner)&&(!status||state(a)===status)&&(!from||a.activity_date>=from)&&(!to||a.activity_date<=to)&&(!q||[a.title,a.description,a.location,person(a.user_id)].join(' ').toLocaleLowerCase('cs').includes(q))).sort((a,b)=>b.activity_date.localeCompare(a.activity_date))}
+function bars(selector,entries,format=n=>String(n)){const max=Math.max(...entries.map(x=>x[1]),1);$(selector).innerHTML=entries.length?entries.map(([name,n])=>`<div class="barrow"><div class="barlabel"><span>${esc(name)}</span><b>${esc(format(n))}</b></div><div class="track"><div class="bar" style="width:${n/max*100}%"></div></div></div>`).join(''):'<p>Pro tento výběr nejsou k dispozici žádné aktivity.</p>'}
+function syncAuthView(){
+ const signedOut=!user;
+ document.body.classList.toggle('signed-out',signedOut);
+ $('main').hidden=signedOut;
+ $('#authButton').hidden=signedOut;
+ $('#identity').hidden=signedOut;
+ if(signedOut){
+  for(const dialog of $$('dialog:not(#auth)'))if(dialog.open)dialog.close();
+  if(!$('#auth').open)$('#auth').show();
+ }else if($('#auth').open)$('#auth').close();
+}
+function render(){syncAuthView();const list=filtered();const n=list.length,done=list.filter(a=>state(a)==='done').length;$('#total').textContent=n;$('#people').textContent=new Set(list.map(a=>a.user_id)).size;$('#reflections').textContent=done;$('#reflectionRate').textContent=n?Math.round(done/n*100)+' % z vybraných aktivit':'Zatím žádné aktivity';$('#cost').textContent=money(list.reduce((s,a)=>s+Number(a.cost),0));$('#resultCount').textContent=`${n} ${n===1?'aktivita':n>=2&&n<=4?'aktivity':'aktivit'}`;$('#board').hidden=tab!=='board';$('#stats').hidden=tab!=='stats';$$('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));$$('[data-view]').forEach(b=>{b.classList.toggle('selected',b.dataset.view===view);b.setAttribute('aria-pressed',String(b.dataset.view===view))});$('#dates').hidden=$('#period').value!=='custom';$('#activities').innerHTML=!list.length?`<div class="empty"><h3>${user?'Pro tento výběr tu zatím nic není.':'Váš společný prostor pro rozvoj'}</h3><p>${user?'Změňte filtry nebo přidejte první aktivitu.':'Přihlaste se a objevte vzdělávací aktivity svého týmu.'}</p></div>`:view==='cards'?list.map(a=>`<article class="card"><div class="cardtop"><span>${esc(a.format)}</span><span class="tag ${state(a)}">${labels[state(a)]}</span></div><h3><button data-detail="${esc(a.id)}">${esc(a.title)}</button></h3><div class="meta"><span>◷ &nbsp;${date(a.activity_date)}</span><span>⌖ &nbsp;${esc(a.location)}</span></div><p class="description">${esc(a.description)}</p><div class="cardfoot"><div class="person"><span class="avatar">${esc(initials(person(a.user_id)))}</span><span>${esc(person(a.user_id))}${a.user_id===user?.id?' · vy':''}</span></div><b>${money(a.cost)}</b></div>${a.user_id===user?.id?`<div class="cardactions"><button data-edit="${esc(a.id)}">${state(a)==='pending'?'Doplnit reflexi':'Upravit'}</button><button data-delete="${esc(a.id)}">Smazat</button></div>`:''}</article>`).join(''):`<div class="tablewrap"><table><thead><tr><th>Aktivita / forma</th><th>Datum</th><th>Garant DVPP</th><th>Stav</th><th>Náklady</th></tr></thead><tbody>${list.map(a=>`<tr><td><button data-detail="${esc(a.id)}"><b>${esc(a.title)}</b></button><br>${esc(a.format)}</td><td>${date(a.activity_date)}</td><td>${esc(person(a.user_id))}</td><td><span class="tag ${state(a)}">${labels[state(a)]}</span></td><td>${money(a.cost)}</td></tr>`).join('')}</tbody></table></div>`;
+const owners=[...new Set(list.map(a=>a.user_id))];bars('#byOwner',owners.map(id=>[person(id),list.filter(a=>a.user_id===id).length]).sort((a,b)=>b[1]-a[1]));bars('#costByOwner',owners.map(id=>[person(id),list.filter(a=>a.user_id===id).reduce((s,a)=>s+Number(a.cost),0)]).sort((a,b)=>b[1]-a[1]),money);const months=[...new Set(list.map(a=>a.activity_date.slice(0,7)))].sort();bars('#byMonth',months.map(m=>[new Intl.DateTimeFormat('cs-CZ',{month:'long',year:'numeric'}).format(new Date(m+'-01T12:00:00')),list.filter(a=>a.activity_date.startsWith(m)).length]));bars('#byStatus',Object.entries(labels).map(([key,label])=>[label,list.filter(a=>state(a)===key).length]));$('#identity').innerHTML=user?`<span>${esc(demo?'Ukázkový účet · '+person(user.id):person(user.id))} <span aria-hidden="true">✎</span></span><small>${esc(user.email||'Ukázkový režim')}</small>`:'';$('#authButton').textContent=demo?'O ukázkovém režimu':user?'Odhlásit se':'Přihlásit se';}
+function updateOwners(){const old=$('#owner').value;$('#owner').innerHTML='<option value="">Všichni garanti</option>'+profiles.map(p=>`<option value="${esc(p.id)}">${esc(p.display_name)}</option>`).join('');$('#owner').value=old}
+async function allRows(table,columns,order){let rows=[];for(let offset=0;;offset+=1000){const r=await db.from(table).select(columns).order(order,{ascending:true}).range(offset,offset+999);if(r.error)throw Error('Data se nepodařilo načíst. Ověřte přístup do týmu a připojení.');rows.push(...r.data);if(r.data.length<1000)return rows;}}
+let loadRevision=0;
+async function load(){const revision=++loadRevision,accountId=user?.id;if(demo){profiles=demoProfiles;try{activities=JSON.parse(localStorage.getItem('dvpp-demo-v1'))||structuredClone(samples)}catch{activities=structuredClone(samples)}}else if(user){const membership=await db.from('dvpp_team_members').select('approved').eq('user_id',user.id).maybeSingle();if(membership.error)throw Error('Nelze ověřit členství v týmu.');const approved=membership.data?.approved===true;$('#notice').hidden=approved;$('#notice').textContent=approved?'':'Váš účet čeká na schválení správcem týmu. Teprve poté uvidíte a přidáte společné aktivity.';$('#addButton').disabled=!approved;const [nextActivities,nextProfiles]=await Promise.all([allRows('dvpp_activities','*','id'),allRows('dvpp_profiles','id, display_name','id')]);if(revision!==loadRevision||accountId!==user?.id)return;activities=nextActivities;profiles=nextProfiles;}else{activities=[];profiles=[];$('#notice').hidden=true;$('#addButton').disabled=false}updateOwners();$('#updated').textContent='Aktualizováno '+new Intl.DateTimeFormat('cs-CZ',{hour:'2-digit',minute:'2-digit'}).format(new Date());render()}
+function openEditor(id){if(!user){$('#auth').showModal();return}const a=activities.find(a=>a.id===id);if(a&&a.user_id!==user.id)return;$('#activityForm').reset();$('#formError').textContent='';$('#editorTitle').textContent=a?'Upravit rozvojovou aktivitu':'Nová rozvojová aktivita';for(const name of ['id','title','activity_date','format','location','url','description','cost','reflection'])$('#activityForm').elements[name].value=a?.[name]??(name==='activity_date'?today():name==='cost'?0:name==='format'?'Seminář':'');syncReflection();$('#editor').showModal()}
+function syncReflection(){const f=$('#activityForm'),future=f.elements.activity_date.value>today();f.elements.reflection.disabled=future;$('#reflectionHint').textContent=future?'Reflexi můžete doplnit od data absolvování aktivity.':'Co si odnášíte a jak to využijete ve své práci?'}
+function detail(id){const a=activities.find(x=>x.id===id);if(!a)return;const url=safeUrl(a.url);$('#detailContent').innerHTML=`<div class="dialoghead"><div><span class="tag ${state(a)}">${labels[state(a)]}</span><h2>${esc(a.title)}</h2></div><button class="close" data-close="detail" aria-label="Zavřít">×</button></div><p>${esc(person(a.user_id))} · ${date(a.activity_date)} · ${esc(a.format)}</p><p class="detailtitle">Místo nebo online zdroj</p><p class="detailbody">${esc(a.location)}${url?`<br><a href="${esc(url)}" rel="noopener noreferrer" target="_blank">Otevřít odkaz ↗</a>`:''}</p><p class="detailtitle">Popis aktivity a přínos pro rozvoj</p><p class="detailbody">${esc(a.description)}</p><p class="detailtitle">Reflexe</p><p class="detailbody">${esc(a.reflection||'Reflexe zatím nebyla doplněna.')}</p><p class="detailtitle">Náklady</p><p>${money(a.cost)}</p>${user?.id===a.user_id?`<div class="actions"><button data-delete="${esc(a.id)}" class="quiet">Smazat</button><button data-edit="${esc(a.id)}" class="primary">Upravit aktivitu</button></div>`:''}`;$('#detail').showModal()}
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.close)$('#'+b.dataset.close).close();if(b.dataset.view){view=b.dataset.view;render()}if(b.dataset.tab){tab=b.dataset.tab;render()}if(b.dataset.detail)detail(b.dataset.detail);if(b.dataset.edit){$('#detail').close();openEditor(b.dataset.edit)}if(b.dataset.delete){const a=activities.find(x=>x.id===b.dataset.delete);if(a?.user_id!==user?.id)return;removeId=a.id;$('#confirmDelete').showModal()}});
+$('#addButton').onclick=()=>openEditor();$('#activityForm').elements.activity_date.onchange=syncReflection;
+$('#activityForm').onsubmit=async e=>{e.preventDefault();const f=e.target,d=Object.fromEntries(new FormData(f));if(!user)return;const old=activities.find(a=>a.id===d.id);if(old&&old.user_id!==user.id)return;const payload={title:d.title.trim(),activity_date:d.activity_date,format:d.format,location:d.location.trim(),url:d.url.trim(),description:d.description.trim(),cost:Number(d.cost),reflection:(d.reflection||'').trim()};if(!payload.title||!payload.description||!payload.location||!Number.isFinite(payload.cost)||payload.cost<0||payload.cost>99999999){$('#formError').textContent='Vyplňte název, místo, popis a platné nezáporné náklady.';return}if(payload.url&&!safeUrl(payload.url)){$('#formError').textContent='Zadejte platný odkaz začínající https:// nebo http://.';return}if(payload.reflection&&payload.activity_date>today()){$('#formError').textContent='Reflexi lze přidat až po absolvování aktivity.';return}$('#saveButton').disabled=true;try{if(demo){if(old)Object.assign(old,payload);else activities.push({...payload,id:crypto.randomUUID(),user_id:user.id});localStorage.setItem('dvpp-demo-v1',JSON.stringify(activities));render()}else{const q=old?db.from('dvpp_activities').update(payload).eq('id',old.id).eq('user_id',user.id):db.from('dvpp_activities').insert({...payload,user_id:user.id});const r=await q.select('id');if(r.error||!r.data?.length)throw Error('Aktivitu se nepodařilo uložit. Ověřte oprávnění a připojení.');await load()}$('#editor').close();toast(demo?'Ukázková aktivita uložena v tomto prohlížeči.':'Aktivita byla uložena.')}catch(err){$('#formError').textContent=err.message}finally{$('#saveButton').disabled=false}};
+$('#deleteConfirmed').onclick=async()=>{const a=activities.find(x=>x.id===removeId);if(!a||a.user_id!==user?.id)return;$('#deleteConfirmed').disabled=true;try{if(demo){activities=activities.filter(x=>x.id!==removeId);localStorage.setItem('dvpp-demo-v1',JSON.stringify(activities));render()}else{const r=await db.from('dvpp_activities').delete().eq('id',removeId).eq('user_id',user.id).select('id');if(r.error||!r.data?.length)throw Error('Aktivitu nelze smazat.');await load()}$('#confirmDelete').close();$('#detail').close();toast('Aktivita byla smazána.')}catch(err){toast(err.message)}finally{$('#deleteConfirmed').disabled=false}};
+['search','owner','period','status','from','to'].forEach(id=>$('#'+id).addEventListener(id==='search'?'input':'change',render));$('#reset').onclick=()=>{$('#search').value=$('#owner').value=$('#status').value=$('#from').value=$('#to').value='';$('#period').value='all';render()};
+$('#identity').onclick=()=>{
+ if(!user)return;
+ $('#profileName').value=person(user.id)==='Garant DVPP'?'':person(user.id);
+ $('#profileEmail').textContent=user.email||'Ukázkový účet';
+ $('#profileError').textContent='';
+ $('#profile').showModal();
+};
+$('#profileForm').onsubmit=async e=>{
+ e.preventDefault();if(!user)return;
+ const name=$('#profileName').value.trim();
+ if(!name||name.length>100){$('#profileError').textContent='Vyplňte jméno o délce 1 až 100 znaků.';return;}
+ $('#saveProfile').disabled=true;
+ try{
+  if(demo){const p=profiles.find(p=>p.id===user.id);if(p)p.display_name=name;updateOwners();render();}
+  else{const r=await db.from('dvpp_profiles').update({display_name:name}).eq('id',user.id).select('id');if(r.error||!r.data?.length)throw Error('Jméno se nepodařilo uložit. Zkuste to znovu.');await load();}
+  $('#profile').close();toast('Zobrazované jméno bylo uloženo.');
+ }catch(err){$('#profileError').textContent=err.message;}finally{$('#saveProfile').disabled=false;}
+};
+function clearSignedInView(){
+ ++loadRevision;user=null;activities=[];profiles=[];
+ $('#activityForm').reset();$('#profileForm').reset();$('#authForm').reset();
+ $('#detailContent').replaceChildren();$('#identity').replaceChildren();
+ updateOwners();render();
+}
+async function signOutCurrentBrowser(){
+ if(signingOut)return;
+ signingOut=true;
+ clearSignedInView();
+ $('#loginSubmit').disabled=true;$('#forgot').disabled=true;$('#toggleRegister').disabled=true;
+ $('#authError').textContent='Odhlašování…';
+ let timeout;
+ try{
+  // Revocation is best effort; an expired/missing server session must not retain local credentials.
+  await Promise.race([
+   Promise.resolve().then(()=>db.auth.signOut({scope:'local'})).catch(()=>null),
+   new Promise(resolve=>{timeout=setTimeout(resolve,5000);})
+  ]);
+  localStorage.removeItem(authStorageKey);
+  localStorage.removeItem(authStorageKey+'-code-verifier');
+  localStorage.removeItem(authStorageKey+'-user');
+  if(localStorage.getItem(authStorageKey)!==null)throw Error('Session storage was not cleared');
+  location.replace(location.origin+location.pathname);
+ }catch{
+  $('#authError').textContent='Prohlížeč nedovolil odstranit přihlášení. Zavřete tuto kartu a vymažte data tohoto webu.';
+ }finally{clearTimeout(timeout);}
+}
+window.addEventListener('storage',event=>{
+ if(!demo&&event.key===authStorageKey&&event.newValue===null&&!signingOut){
+  signingOut=true;clearSignedInView();location.replace(location.origin+location.pathname);
+ }
+});
+$('#authButton').onclick=async()=>{
+ if(demo){toast('Ukázková data jsou jen v tomto prohlížeči. Týmové sdílení vyžaduje připojení Supabase.');return;}
+ if(user)await signOutCurrentBrowser();else if(!$('#auth').open)$('#auth').show();
+};
+$('#toggleRegister').onclick=()=>{register=!register;$('#nameLabel').hidden=!register;$('#displayName').required=register;$('#authTitle').textContent=register?'Vytvořit účet garanta DVPP':'Přihlásit se';$('#loginSubmit').textContent=register?'Vytvořit účet':'Přihlásit se';$('#toggleRegister').textContent=register?'Mám účet – přihlásit se':'Vytvořit účet';$('#authError').textContent=''};
+$('#authForm').onsubmit=async e=>{e.preventDefault();$('#loginSubmit').disabled=true;$('#authError').textContent='';try{let r;if(register){r=await db.auth.signUp({email:$('#email').value,password:$('#password').value,options:{data:{display_name:$('#displayName').value.trim()},emailRedirectTo:appReturnUrl}});if(r.error)throw r.error;if(!r.data.session){$('#authError').textContent='Zkontrolujte e-mail a potvrďte registraci. Potvrzené adresy @kcv.cz získají přístup automaticky; ostatní účty schvaluje správce.';return}}else{r=await db.auth.signInWithPassword({email:$('#email').value,password:$('#password').value});if(r.error)throw r.error}user=r.data.user;await load();$('#auth').close();$('#password').value='';toast('Jste přihlášeni.')}catch{$('#authError').textContent='Přihlášení nebo registrace se nezdařily. Zkontrolujte údaje, potvrzení e-mailu a členství v týmu.'}finally{$('#loginSubmit').disabled=false}};
+$('#forgot').onclick=async()=>{const email=$('#email').value;if(!email||!$('#email').checkValidity()){$('#authError').textContent='Nejprve vyplňte platný e-mail.';return}const r=await db.auth.resetPasswordForEmail(email,{redirectTo:appReturnUrl});$('#authError').textContent=r.error?'Odkaz se nepodařilo odeslat.':'Pokud účet existuje, přijde vám odkaz pro obnovu hesla.'};
+$('#export').onclick=()=>{const rows=[['Název','Datum','Garant DVPP','Forma','Místo','Odkaz','Popis','Reflexe','Náklady Kč','Stav'],...filtered().map(a=>[a.title,a.activity_date,person(a.user_id),a.format,a.location,a.url,a.description,a.reflection,a.cost,labels[state(a)]])];const csv='\uFEFF'+rows.map(r=>r.map(v=>'"'+String(/^[=+\-@\t\r]/.test(String(v))?'\''+v:v).replaceAll('"','""')+'"').join(';')).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='osobni-rozvoj-dvpp.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+async function init(){syncAuthView();if(demo){$('#notice').innerHTML='<span><b>Ukázkový režim</b> · Smyšlené aktivity pro vyzkoušení. Úpravy se ukládají pouze v tomto prohlížeči.</span><span>Týmové sdílení čeká na připojení Supabase.</span>';await load();return}$('#notice').hidden=true;$('#authButton').disabled=true;$('#addButton').disabled=true;try{const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/+esm');db=createClient(config.supabaseUrl,config.supabasePublishableKey,{auth:{storageKey:authStorageKey}});const {data,error}=await db.auth.getSession();if(error)throw error;user=data.session?.user||null;await load();$('#authButton').disabled=false;$('#loginSubmit').disabled=false;$('#forgot').disabled=false;db.auth.onAuthStateChange((event,session)=>{if(signingOut)return;user=session?.user||null;syncAuthView();if(event==='PASSWORD_RECOVERY')setTimeout(()=>{const pwd=prompt('Zadejte nové heslo (alespoň 8 znaků):');if(pwd&&pwd.length>=8)db.auth.updateUser({password:pwd}).then(r=>toast(r.error?'Heslo se nepodařilo změnit.':'Heslo bylo změněno.'));},0);setTimeout(()=>load().catch(err=>toast(err.message)),0)});db.channel('activities-changes').on('postgres_changes',{event:'*',schema:'public',table:'dvpp_activities'},()=>load().catch(err=>toast(err.message))).subscribe()}catch(err){$('#notice').hidden=false;$('#notice').textContent='Společný prostor se nepodařilo načíst. '+err.message;$('#authError').textContent='Přihlášení se nepodařilo načíst. Obnovte stránku a zkuste to znovu.';render()}}
+init();
