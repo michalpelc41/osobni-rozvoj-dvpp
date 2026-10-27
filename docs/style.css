@@ -108,3 +108,8 @@ header .account #identity{color:#307e72}
 @media(max-width:650px){.views{gap:6px}.views button,.views button[data-view="timeline"]{padding:7px 9px;gap:6px}}
 
 .tablewrap td button[data-detail]{font-size:14.4px}
+
+/* Čitelnější formulář aktivity, větší prostor pro popis a reflexi. */
+#editor label{font-size:13px}
+#editor input[name="location"]{font-weight:400}
+#editor textarea{font-weight:500;min-height:98.8px}
