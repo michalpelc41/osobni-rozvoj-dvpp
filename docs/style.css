@@ -87,3 +87,17 @@ header .account #identity{color:#307e72}
 .tab{display:inline-flex;align-items:center;gap:7px}
 .tab svg{width:17px;height:17px;flex-shrink:0;pointer-events:none}
 @media(max-width:650px){header .brand-copy{min-height:65px;flex:1}}
+
+.timeline-card:after{display:none}
+.timeline-today>span{color:#d02fb7}
+.views button[data-view="timeline"]{display:inline-flex;align-items:center;gap:5px}
+.views button[data-view="timeline"] svg{width:15px;height:15px;flex-shrink:0;pointer-events:none}
+@media(max-width:1050px){
+ .timeline-card{grid-template-columns:70px minmax(0,1fr)}
+ .timeline-date{grid-column:1;grid-row:1/4}
+ .timeline-side{display:contents}
+ .timeline-tags{grid-column:2;grid-row:1;justify-content:flex-end;align-self:start}
+ .timeline-content{grid-column:2;grid-row:2}
+ .timeline-author{grid-column:2;grid-row:3;justify-self:end;margin-left:0}
+}
+@media(max-width:650px){.timeline-card{grid-template-columns:60px minmax(0,1fr)}}
