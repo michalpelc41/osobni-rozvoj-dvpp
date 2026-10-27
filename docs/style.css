@@ -81,3 +81,9 @@ header .account #identity{display:flex;align-items:center;gap:7px;min-width:0}
 .timeline-today>span{background:var(--bg);border:1px solid #85aaa2;border-radius:7px;padding:4px 8px;z-index:1}
 @media(max-width:1050px){.timeline{--gutter:140px}.timeline-month{font-size:17px}.timeline-card{grid-template-columns:70px minmax(0,1fr)}.timeline-side{grid-column:2;flex-direction:row;align-items:center;flex-wrap:wrap;gap:10px}.timeline-author{margin-left:auto}}
 @media(max-width:650px){header .account{flex-direction:row;align-items:center;gap:10px}.intro{padding:6px 0 10px;gap:10px}.intro h2{font-size:22px}.intro p{font-size:12px}.timeline{--gutter:10px}.timeline-row{display:block;padding-bottom:14px}.timeline-month{margin:0 0 10px 34px;font-size:17px}.timeline-month:empty{display:none}.timeline-card{margin-left:34px;padding:14px;gap:10px;grid-template-columns:60px minmax(0,1fr)}.timeline-card:before{left:-32px}.timeline-card:after{left:-19px;width:18px}.timeline-content h3{font-size:16px}.timeline-date strong{font-size:15px}.timeline-side{grid-column:1/-1}.timeline-tags .tag{font-size:10px}.timeline-today{padding-bottom:16px}.timeline-author{font-size:11px}.views button{font-size:11px;padding:6px 8px}}
+
+header .brand-copy{align-self:flex-start;min-height:86px;display:flex;flex-direction:column;justify-content:center}
+header .account #identity{color:#307e72}
+.tab{display:inline-flex;align-items:center;gap:7px}
+.tab svg{width:17px;height:17px;flex-shrink:0;pointer-events:none}
+@media(max-width:650px){header .brand-copy{min-height:65px;flex:1}}
