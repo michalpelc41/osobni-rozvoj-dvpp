@@ -101,3 +101,8 @@ header .account #identity{color:#307e72}
  .timeline-author{grid-column:2;grid-row:3;justify-self:end;margin-left:0}
 }
 @media(max-width:650px){.timeline-card{grid-template-columns:60px minmax(0,1fr)}}
+
+.views{gap:8px;flex-wrap:wrap;max-width:100%;padding:5px}
+.views button,.views button[data-view="timeline"]{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:7px 12px}
+.views button svg,.views button[data-view="timeline"] svg{width:20px;height:20px;flex-shrink:0;pointer-events:none}
+@media(max-width:650px){.views{gap:6px}.views button,.views button[data-view="timeline"]{padding:7px 9px;gap:6px}}
