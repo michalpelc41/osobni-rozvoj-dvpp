@@ -106,3 +106,5 @@ header .account #identity{color:#307e72}
 .views button,.views button[data-view="timeline"]{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:7px 12px}
 .views button svg,.views button[data-view="timeline"] svg{width:20px;height:20px;flex-shrink:0;pointer-events:none}
 @media(max-width:650px){.views{gap:6px}.views button,.views button[data-view="timeline"]{padding:7px 9px;gap:6px}}
+
+.tablewrap td button[data-detail]{font-size:14.4px}
