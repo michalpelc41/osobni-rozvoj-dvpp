@@ -50,3 +50,34 @@ header .account #identity{font-weight:600;text-align:right}
 
 .cardfoot .person{flex-wrap:wrap}
 .cardfoot>b{white-space:nowrap}
+
+/* Kompaktní úvod a účet v jednom řádku na všech šířkách. */
+header .account{flex-direction:row;align-items:center}
+header .account #identity{display:flex;align-items:center;gap:7px;min-width:0}
+#identity svg,.timeline-author svg{width:17px;height:17px;flex-shrink:0}
+.intro{padding-top:6px;padding-bottom:12px}
+.intro h2{margin:4px 0;line-height:1.25}
+.sectionhead{margin-top:8px}
+.toolbar{gap:12px;flex-wrap:wrap}
+/* Časová osa sdílí filtry a detail aktivity s ostatními pohledy. */
+.timeline{grid-column:1/-1;position:relative;--gutter:180px}
+.timeline:before{content:"";position:absolute;top:0;bottom:0;left:var(--gutter);width:1px;background:#74a49b}
+.timeline-row{display:grid;grid-template-columns:var(--gutter) minmax(0,1fr);padding:0 0 16px;position:relative}
+.timeline-month{margin:12px 18px 0 0;font-size:20px;text-transform:capitalize}
+.timeline-card{position:relative;display:grid;grid-template-columns:88px minmax(0,1fr) auto;gap:18px;margin-left:28px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:17px 20px}
+.timeline-card:before{content:"";position:absolute;left:-36px;top:23px;width:13px;height:13px;border:3px solid var(--green);border-radius:50%;background:var(--bg)}
+.timeline-card:after{content:"";position:absolute;left:-23px;top:29px;width:22px;border-top:1px solid var(--border)}
+.timeline-date{display:flex;flex-direction:column;border-right:1px solid var(--border);gap:2px}
+.timeline-date strong{font-size:18px}.timeline-date span,.timeline-date small{color:var(--muted);font-size:12px}
+.timeline-content{min-width:0}.timeline-content h3{margin:0 0 5px;font-size:18px;line-height:1.3}
+.timeline-content h3 button{font:inherit;text-align:left;border:0;border-radius:0;background:none;padding:0}
+.timeline-location{display:flex;gap:6px;align-items:flex-start;color:#0e8e63;font-size:13px;overflow-wrap:anywhere}
+.timeline-description{font-size:13px;margin-top:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:#000}
+.timeline-side{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;gap:18px}
+.timeline-tags{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.timeline-author{display:flex;align-items:center;gap:7px;font-size:12px}
+.timeline-today{position:relative;display:flex;align-items:center;gap:14px;padding:4px 0 20px;font-size:11px;color:var(--green)}
+.timeline-today:after{content:"";flex:1;border-top:1px dashed #85aaa2}
+.timeline-today>span{background:var(--bg);border:1px solid #85aaa2;border-radius:7px;padding:4px 8px;z-index:1}
+@media(max-width:1050px){.timeline{--gutter:140px}.timeline-month{font-size:17px}.timeline-card{grid-template-columns:70px minmax(0,1fr)}.timeline-side{grid-column:2;flex-direction:row;align-items:center;flex-wrap:wrap;gap:10px}.timeline-author{margin-left:auto}}
+@media(max-width:650px){header .account{flex-direction:row;align-items:center;gap:10px}.intro{padding:6px 0 10px;gap:10px}.intro h2{font-size:22px}.intro p{font-size:12px}.timeline{--gutter:10px}.timeline-row{display:block;padding-bottom:14px}.timeline-month{margin:0 0 10px 34px;font-size:17px}.timeline-month:empty{display:none}.timeline-card{margin-left:34px;padding:14px;gap:10px;grid-template-columns:60px minmax(0,1fr)}.timeline-card:before{left:-32px}.timeline-card:after{left:-19px;width:18px}.timeline-content h3{font-size:16px}.timeline-date strong{font-size:15px}.timeline-side{grid-column:1/-1}.timeline-tags .tag{font-size:10px}.timeline-today{padding-bottom:16px}.timeline-author{font-size:11px}.views button{font-size:11px;padding:6px 8px}}
