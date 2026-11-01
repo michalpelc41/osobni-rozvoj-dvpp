@@ -175,3 +175,25 @@ header .account #identity{color:#307e72}
 .card .activity-rating{margin-top:auto}.card .cardfoot{margin-top:0}
 @media(max-width:650px){.sectionhead .tab{padding-left:8px;padding-right:8px}.section-actions{gap:8px}.section-actions #addButton{font-size:12px;padding:9px 10px}.sectionhead{gap:8px}.section-actions #updated{display:none}}
 
+
+/* Ouška přehledů a jednotný filtr školních roků. */
+.sectionhead{align-items:flex-end}
+.sectionhead nav{gap:6px;align-self:stretch;align-items:flex-end}
+.sectionhead .tab{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:200px;white-space:nowrap;padding:13px 16px;border:1px solid var(--border);border-bottom:0;border-radius:12px 12px 0 0;background:#e8eee9;color:#526760;position:relative;margin-bottom:-1px;min-height:48px}
+.sectionhead .tab[data-tab="stats"]{width:130px}
+.sectionhead .tab.active{background:#fff;color:#000;border-top:3px solid #129783;padding-top:11px;box-shadow:0 -3px 10px #243f3b05;z-index:1}
+.sectionhead .tab:hover{background:#f9fcf9;color:#000}
+#addButton{background:#0d9195;border-color:#059a89;font-weight:500}
+#addButton:hover{background:#087f83;border-color:#078878}
+.card-format,.timeline-format{color:#c26a96}
+.timeline-format{font-size:12px;margin:2px 0 8px}
+header .account{flex-direction:column;align-items:flex-end;gap:2px}
+#authButton{padding:2px 0;border:0;background:transparent;border-radius:2px;font-size:11px;font-weight:400;text-decoration:underline;text-underline-offset:3px;color:var(--green)}
+#authButton:hover{color:#164f46;background:transparent}
+.filters{display:grid;grid-template-columns:minmax(200px,1.7fr) repeat(4,minmax(135px,1fr)) auto}
+.filters label{min-width:0}
+.filters #period{font-size:12px}
+@media(max-width:1200px){.filters{grid-template-columns:repeat(4,minmax(0,1fr)) auto}.filters .search{grid-column:1/-1}}
+@media(max-width:650px){header .account{flex-direction:column;align-items:flex-end;gap:2px}.sectionhead{gap:12px}.sectionhead .tab{width:200px;padding:12px 10px}.sectionhead .tab[data-tab="stats"]{width:130px}.sectionhead .tab.active{padding-top:10px}.filters{grid-template-columns:repeat(2,minmax(0,1fr))}.filters #reset{justify-self:start}.toolbar p span{display:inline}.toolbar p{max-width:100%}}
+
+@media(max-width:650px){.filters label:has(#period){grid-column:1/-1;grid-row:2}}
