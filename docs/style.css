@@ -228,3 +228,7 @@ body.signed-out{background-image:none;isolation:isolate}
 #loginPattern{display:none}
 body.signed-out #loginPattern{display:block;position:fixed;inset:0;pointer-events:none;z-index:-1;overflow:hidden}
 #loginPattern span{position:absolute;width:160px;height:160px;background-image:url('assets/login-pattern-seamless.svg');background-size:700px 890px;background-repeat:no-repeat}
+
+/* Přiložený originál v měřítku 1:1, opakování bez zvětšení či zmenšení. */
+body.signed-out #loginPattern{background-image:url('assets/login-background.png');background-size:1920px 1080px;background-repeat:repeat;background-position:center top}
+.auth-brand-subtitle{font-size:15px;font-weight:500;line-height:1.3;margin-top:0}
