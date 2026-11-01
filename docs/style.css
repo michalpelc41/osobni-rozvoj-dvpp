@@ -113,3 +113,16 @@ header .account #identity{color:#307e72}
 #editor label{font-size:13px}
 #editor input[name="location"]{font-weight:400}
 #editor textarea{font-weight:500;min-height:98.8px}
+
+/* Typografie názvů a filtrů, forma aktivity pod názvem karty. */
+.card h3,.card h3 button,.timeline-content h3,.timeline-content h3 button,.tablewrap td button[data-detail],#detailContent h2{color:#000}
+.tablewrap td button[data-detail] b{font-weight:600}
+.tab.active,.views button,.views .selected{color:#000}
+.filters input,.filters select{font-weight:400}
+.cardtop{justify-content:flex-end}
+.cardtop>span.tag{color:inherit}
+.cardtop>span.tag.planned{color:#496783}
+.cardtop>span.tag.pending{color:#8a681c}
+.cardtop>span.tag.done{color:#317250}
+.card h3{margin-bottom:4px}
+.card-format{font-size:12px;color:#070707;margin:0 0 13px}
