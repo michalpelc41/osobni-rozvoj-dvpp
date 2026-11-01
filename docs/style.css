@@ -142,3 +142,6 @@ header .account #identity{color:#307e72}
 .formatted-reflection ul,.formatted-reflection ol{margin:6px 0 10px;padding-left:24px}
 #reflectionPreview{background:white;border:1px solid var(--border);border-radius:7px;padding:12px;font-size:13px;font-weight:400;margin:10px 0;color:var(--ink)}
 @media(max-width:650px){.intro{align-items:flex-end;padding:4px 0 10px}}
+
+#detailContent .detail-description,#detailContent .formatted-reflection{color:#000}
+#detailContent .detail-section-heading{font-size:15px}
