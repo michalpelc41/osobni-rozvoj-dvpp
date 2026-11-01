@@ -197,3 +197,11 @@ header .account{flex-direction:column;align-items:flex-end;gap:2px}
 @media(max-width:650px){header .account{flex-direction:column;align-items:flex-end;gap:2px}.sectionhead{gap:12px}.sectionhead .tab{width:200px;padding:12px 10px}.sectionhead .tab[data-tab="stats"]{width:130px}.sectionhead .tab.active{padding-top:10px}.filters{grid-template-columns:repeat(2,minmax(0,1fr))}.filters #reset{justify-self:start}.toolbar p span{display:inline}.toolbar p{max-width:100%}}
 
 @media(max-width:650px){.filters label:has(#period){grid-column:1/-1;grid-row:2}}
+
+/* Jemné rozestupy účtu a celkového hodnocení. */
+header .account{row-gap:0}
+header .account #identity{font-size:14.4px;line-height:1.25}
+#authButton{padding:0;line-height:1.25}
+.rating-field{margin-top:18px;padding-top:2px}
+.rating-field>p{margin:0 0 6px}
+#ratingHint:empty{display:none}
