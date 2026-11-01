@@ -205,3 +205,26 @@ header .account #identity{font-size:14.4px;line-height:1.25}
 .rating-field{margin-top:18px;padding-top:2px}
 .rating-field>p{margin:0 0 6px}
 #ratingHint:empty{display:none}
+
+/* Přihlášení ve středu obrazovky s vlastní značkou. */
+body.signed-out{display:grid;place-items:center;min-height:100vh;min-height:100svh;padding:24px 16px;background-image:url('assets/login-pattern-seamless.svg');background-size:700px 890px;background-position:center top}
+body.signed-out>header{display:none}
+body.signed-out #auth{position:relative;inset:auto;margin:0;width:min(560px,100%);max-width:560px;max-height:none;padding:30px;overflow:visible;box-shadow:0 16px 60px #17382a20}
+.auth-brand{display:flex;align-items:center;gap:16px;padding-bottom:24px;margin-bottom:20px;border-bottom:1px solid var(--border)}
+.auth-brand img{width:70px;height:70px;aspect-ratio:1;flex-shrink:0;object-fit:contain}
+.auth-brand-title{font-size:22px;font-weight:700;color:#101914;letter-spacing:-.5px;line-height:1.25}
+.auth-brand-subtitle{font-size:13px;font-weight:400;color:#129783;line-height:1.5;margin-top:4px}
+#authForm #email,#authForm #password{font-weight:400}
+.password-field{position:relative;display:block}
+#password{padding-right:48px}
+#togglePassword{position:absolute;right:4px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:36px;height:36px;padding:8px;background:transparent;border:0;border-radius:5px;color:var(--green)}
+#togglePassword:hover{background:#edf4ef}
+#togglePassword svg{width:20px;height:20px}
+#togglePassword .eye-slash{display:none}
+#togglePassword[aria-pressed="true"] .eye-slash{display:block}
+@media(max-width:650px){body.signed-out #auth{margin:0;padding:24px 20px}.auth-brand{gap:12px}.auth-brand img{width:56px;height:56px}.auth-brand-title{font-size:18px}.auth-brand-subtitle{font-size:11px}}
+
+body.signed-out{background-image:none;isolation:isolate}
+#loginPattern{display:none}
+body.signed-out #loginPattern{display:block;position:fixed;inset:0;pointer-events:none;z-index:-1;overflow:hidden}
+#loginPattern span{position:absolute;width:160px;height:160px;background-image:url('assets/login-pattern-seamless.svg');background-size:700px 890px;background-repeat:no-repeat}
