@@ -145,3 +145,9 @@ header .account #identity{color:#307e72}
 
 #detailContent .detail-description,#detailContent .formatted-reflection{color:#000}
 #detailContent .detail-section-heading{font-size:15px}
+
+#editor .reflectionbox>label{font-size:14px}
+.reflection-tools>button{width:36px;height:36px;padding:8px;display:inline-flex;align-items:center;justify-content:center}
+.reflection-tools svg{width:19px;height:19px;flex-shrink:0;pointer-events:none}
+.reflection-link-panel{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px;margin:10px 0}
+.reflection-link-panel label+label{margin-top:10px}.reflection-link-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
