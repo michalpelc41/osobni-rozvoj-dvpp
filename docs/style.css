@@ -151,3 +151,27 @@ header .account #identity{color:#307e72}
 .reflection-tools svg{width:19px;height:19px;flex-shrink:0;pointer-events:none}
 .reflection-link-panel{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px;margin:10px 0}
 .reflection-link-panel label+label{margin-top:10px}.reflection-link-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+
+/* Záložky: o 20 % širší, tlačítko pro přidání ve stejném řádku. */
+.sectionhead{gap:16px;align-items:center;flex-wrap:wrap}
+.sectionhead nav{gap:0;min-width:0}
+.sectionhead .tab{padding-left:12px;padding-right:12px}
+.section-actions{display:flex;gap:16px;align-items:center;margin-left:auto;padding-bottom:6px}
+.brand-copy{color:#129783}
+.rich-editor{background:#fff;border:1px solid #d2dad3;border-radius:7px;padding:10px 11px;min-height:98.8px;max-height:350px;overflow-y:auto;margin-top:6px;color:var(--ink);font-size:13px;font-weight:400;outline-offset:3px}
+.rich-editor:empty:before{content:attr(data-placeholder);color:#757575;pointer-events:none}
+.rich-editor:focus-visible{outline:3px solid #80b8a6}.rich-editor[aria-disabled="true"]{background:#f2f3ef;color:var(--muted);cursor:not-allowed}
+.reflection-tools>button{padding:7px;width:36px;height:36px;overflow:hidden}
+.reflection-tools svg{width:18px;height:18px;max-width:100%;max-height:100%}
+.rating-field{border:0;padding:16px 0 0;margin:0}.rating-field legend{font-size:14px;font-weight:600;padding:0;color:#046354}
+.rating-field>p,.rating-field small{font-size:12px;color:var(--muted)}
+.rating-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0}
+.rating-picker{display:flex;gap:3px}.rating-picker button{padding:3px;width:34px;height:34px;border-color:transparent;background:transparent;display:grid;place-items:center}
+.rating-picker svg{width:27px;height:27px;fill:transparent;stroke:#8c9d94;stroke-width:1.5;pointer-events:none}
+.rating-picker .filled svg,.activity-rating .filled svg{fill:#c89616;stroke:#c89616}
+#clearRating{font-size:11px;padding:5px 8px}#ratingValue{font-size:12px;color:var(--muted)}
+.activity-rating{display:flex;gap:3px;align-items:center;margin:0 0 14px}
+.activity-rating svg{width:18px;height:18px;fill:transparent;stroke:#aebbb3;stroke-width:1.4;display:block}
+.card .activity-rating{margin-top:auto}.card .cardfoot{margin-top:0}
+@media(max-width:650px){.sectionhead .tab{padding-left:8px;padding-right:8px}.section-actions{gap:8px}.section-actions #addButton{font-size:12px;padding:9px 10px}.sectionhead{gap:8px}.section-actions #updated{display:none}}
+
