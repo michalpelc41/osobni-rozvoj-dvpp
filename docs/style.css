@@ -42,7 +42,7 @@ body.signed-out>header{max-width:none;height:86px;min-height:86px;background:#ff
 header .account #identity{font-weight:600;text-align:right}
 
 .cardtop>span:first-child{color:#070707}
-.cardfoot .person>span:last-child{font-size:13.2px}
+.cardfoot .person > span { font-size: 12.1px; }
 
 .metrics #cost{font-size:20px;letter-spacing:-.5px}
 .cardactions button{width:28.8px;height:28.8px;padding:6.4px;display:inline-flex;align-items:center;justify-content:center}
