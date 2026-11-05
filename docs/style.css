@@ -322,39 +322,39 @@ header .account #identity { color: var(--ink); }
 footer { margin-top: 34px; font-size: 12px; }
 
 body.signed-out #auth {
-  width: min(920px, 100%);
+  width: min(600px, 100%);
   max-width: none;
   border: 0;
   padding: 0;
   border-radius: 0;
   box-shadow: var(--kcv-shadow);
 }
-#authForm { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+#authForm { display: grid; grid-template-columns: minmax(0, 1fr); }
 .auth-brand {
   grid-column: 1 / -1;
   margin: 0;
   padding: 18px clamp(20px, 4vw, 38px);
   border-bottom-color: #222;
 }
-.auth-brand-title { font-size: clamp(21px, 3vw, 29px); }
-.auth-brand-subtitle { color: var(--muted); }
-.auth-fields, .auth-register { padding: clamp(22px, 4vw, 38px); min-width: 0; }
+.auth-brand-title { font-size: clamp(21px, 3vw, 29px); color: var(--kcv-heading-teal); font-weight: 800; }
+.auth-brand-subtitle { color: var(--kcv-heading-teal); font-weight: 600; }
+.auth-fields { padding: clamp(22px, 4vw, 38px); min-width: 0; }
 .auth-fields label { margin-bottom: 14px; }
 .auth-fields .dialoghead { margin-bottom: 12px; }
-.auth-register { background: var(--kcv-blue); color: #fff; }
-.auth-register-kicker { font-size: 17px; }
-.auth-register h2 { font-size: clamp(26px, 3.4vw, 40px); margin: 4px 0 16px; }
 #auth #toggleRegister {
-  background: #fff;
-  color: #00638c;
-  padding: 10px 14px;
-  margin-top: 20px;
-  text-decoration: none;
+  background: transparent;
+  border: 0;
+  color: var(--kcv-heading-teal);
+  padding: 0;
+  margin-top: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
   border-radius: 0;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 500;
 }
-#auth #toggleRegister:hover { background: #eaf6fb; }
+#auth #toggleRegister:hover { color: #005e57; }
+.auth-registration-link { text-align: center; }
 #auth #loginSubmit { width: 100%; background: var(--kcv-blue); border-color: var(--kcv-blue); }
 #auth #loginSubmit:hover { background: #00638c; }
 #auth #forgot { color: #57324f; font-size: 12px; }
