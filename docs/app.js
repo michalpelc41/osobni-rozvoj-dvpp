@@ -11,6 +11,13 @@ const appReturnUrl=new URL('./',location.href).href;
 const config=window.DVPP_CONFIG||{};const demo=!config.supabaseUrl||!config.supabasePublishableKey;
 const authStorageKey=demo?'':`sb-${new URL(config.supabaseUrl).hostname.split('.')[0]}-auth-token`;
 let signingOut=false;
+const recoveryStorageKey='dvpp-password-recovery';
+let recoveryMode=new URLSearchParams(location.hash.slice(1)).get('type')==='recovery';
+let recoveryReady=false;
+let recoverySaving=false;
+let authInitialized=false;
+try { recoveryMode=recoveryMode||Boolean(sessionStorage.getItem(recoveryStorageKey)); } catch {}
+
 let db=null,user=demo?{id:'demo-me'}:null,activities=[],profiles=[],view='cards',tab='board',register=false,removeId=null;
 const demoProfiles=[{id:'demo-me',display_name:'Jana Nováková'},{id:'demo-2',display_name:'Petr Svoboda'},{id:'demo-3',display_name:'Lucie Dvořáková'}];
 const shift=n=>{const d=new Date();d.setDate(d.getDate()+n);return localDate(d)};
@@ -25,8 +32,80 @@ const person=id=>profiles.find(p=>p.id===id)?.display_name||'Jméno není dopln�
 function toast(s){$('#toast').textContent=s;$('#toast').hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>$('#toast').hidden=true,4000)}
 function filtered(){const q=$('#search').value.toLocaleLowerCase('cs'),owner=$('#owner').value,status=$('#status').value,format=$('#formatFilter').value;const year=Number($('#period').value),from=year+'-09-01',to=(year+1)+'-08-31';return activities.filter(a=>(!owner||a.user_id===owner)&&(!status||state(a)===status)&&(!format||a.format===format)&&a.activity_date>=from&&a.activity_date<=to&&(!q||[a.title,a.description,a.location,person(a.user_id)].join(' ').toLocaleLowerCase('cs').includes(q))).sort((a,b)=>a.activity_date.localeCompare(b.activity_date)||a.title.localeCompare(b.title,'cs'))}
 function bars(selector,entries,format=n=>String(n)){const max=Math.max(...entries.map(x=>x[1]),1);$(selector).innerHTML=entries.length?entries.map(([name,n])=>`<div class="barrow"><div class="barlabel"><span>${esc(name)}</span><b>${esc(format(n))}</b></div><div class="track"><div class="bar" style="width:${n/max*100}%"></div></div></div>`).join(''):'<p>Pro tento výběr nejsou k dispozici žádné aktivity.</p>'}
+function syncRecoveryFields(){
+ $('#auth').setAttribute('aria-labelledby',recoveryMode?'recoveryTitle':'authTitle');
+ $('#loginFields').hidden=recoveryMode;
+ $('#recoveryFields').hidden=!recoveryMode;
+ for(const input of $$('#loginFields input'))input.disabled=recoveryMode;
+ for(const input of $$('#recoveryFields input')){
+  input.disabled=!recoveryMode||!recoveryReady;
+  input.required=recoveryMode;
+ }
+ $('#recoverySubmit').disabled=!recoveryReady||recoverySaving;
+}
+function rememberRecovery(userId){
+ try { sessionStorage.setItem(recoveryStorageKey,userId); } catch {}
+}
+function forgetRecovery(){
+ try { sessionStorage.removeItem(recoveryStorageKey); } catch {}
+}
+function handleAuthChange(event,session){
+ if(signingOut)return;
+ user=session?.user||null;
+ if(event==='PASSWORD_RECOVERY'&&user){
+  recoveryMode=true;
+  recoveryReady=true;
+  rememberRecovery(user.id);
+  $('#recoveryError').textContent='';
+ }
+ if(event==='SIGNED_OUT'){
+  recoveryReady=false;
+  forgetRecovery();
+ }
+ syncAuthView();
+ if(authInitialized&&!recoveryMode)setTimeout(()=>load().catch(err=>toast(err.message)),0);
+}
+async function saveRecoveredPassword(){
+ if(recoverySaving)return;
+ if(!recoveryReady||!user){
+  $('#recoveryError').textContent='Odkaz pro obnovu hesla je neplatný nebo vypršel. Vraťte se k přihlášení a požádejte o nový.';
+  return;
+ }
+ const password=$('#newPassword').value;
+ if(password.length<8){
+  $('#recoveryError').textContent='Nové heslo musí mít alespoň 8 znaků.';
+  return;
+ }
+ if(password!==$('#confirmPassword').value){
+  $('#recoveryError').textContent='Zadaná hesla se neshodují.';
+  return;
+ }
+ recoverySaving=true;
+ $('#recoverySubmit').disabled=true;
+ $('#recoveryError').textContent='';
+ try{
+  const {error}=await db.auth.updateUser({password});
+  if(error)throw error;
+ }catch{
+  $('#recoveryError').textContent='Heslo se nepodařilo změnit. Použijte jiné heslo a zkuste to znovu, případně požádejte o nový odkaz.';
+  return;
+ }finally{
+  recoverySaving=false;
+  $('#recoverySubmit').disabled=!recoveryReady||recoverySaving;
+ }
+ $('#newPassword').value='';
+ $('#confirmPassword').value='';
+ forgetRecovery();
+ recoveryMode=false;
+ recoveryReady=false;
+ history.replaceState(null,'',location.pathname+location.search);
+ syncAuthView();
+ toast('Nové heslo bylo uloženo.');
+ await load().catch(err=>toast('Heslo bylo změněno. '+err.message));
+}
 function syncAuthView(){
- const signedOut=!user;
+ const signedOut=!user||recoveryMode;
+ syncRecoveryFields();
  document.body.classList.toggle('signed-out',signedOut);
  $('main').hidden=signedOut;
  $('#authButton').hidden=signedOut;
@@ -160,8 +239,64 @@ $('#toggleRegister').onclick=()=>{register=!register;$('#nameLabel').hidden=!reg
 function setPasswordVisibility(visible){$('#password').type=visible?'text':'password';const button=$('#togglePassword');button.setAttribute('aria-pressed',String(visible));button.setAttribute('aria-label',visible?'Skrýt heslo':'Zobrazit heslo');button.title=visible?'Skrýt heslo':'Zobrazit heslo';}
 $('#togglePassword').onclick=()=>setPasswordVisibility($('#password').type==='password');
 $('#authForm').addEventListener('reset',()=>setPasswordVisibility(false));
-$('#authForm').onsubmit=async e=>{e.preventDefault();$('#loginSubmit').disabled=true;$('#authError').textContent='';try{let r;if(register){r=await db.auth.signUp({email:$('#email').value,password:$('#password').value,options:{data:{display_name:$('#displayName').value.trim()},emailRedirectTo:appReturnUrl}});if(r.error)throw r.error;if(!r.data.session){$('#authError').textContent='Zkontrolujte e-mail a potvrďte registraci. Potvrzené adresy @kcv.cz získají přístup automaticky; ostatní účty schvaluje správce.';return}}else{r=await db.auth.signInWithPassword({email:$('#email').value,password:$('#password').value});if(r.error)throw r.error}user=r.data.user;await load();$('#auth').close();$('#password').value='';setPasswordVisibility(false);toast('Jste přihlášeni.')}catch{$('#authError').textContent='Přihlášení nebo registrace se nezdařily. Zkontrolujte údaje, potvrzení e-mailu a členství v týmu.'}finally{$('#loginSubmit').disabled=false}};
+$('#authForm').onsubmit=async e=>{e.preventDefault();if(recoveryMode){await saveRecoveredPassword();return;}$('#loginSubmit').disabled=true;$('#authError').textContent='';try{let r;if(register){r=await db.auth.signUp({email:$('#email').value,password:$('#password').value,options:{data:{display_name:$('#displayName').value.trim()},emailRedirectTo:appReturnUrl}});if(r.error)throw r.error;if(!r.data.session){$('#authError').textContent='Zkontrolujte e-mail a potvrďte registraci. Potvrzené adresy @kcv.cz získají přístup automaticky; ostatní účty schvaluje správce.';return}}else{r=await db.auth.signInWithPassword({email:$('#email').value,password:$('#password').value});if(r.error)throw r.error}user=r.data.user;await load();$('#auth').close();$('#password').value='';setPasswordVisibility(false);toast('Jste přihlášeni.')}catch{$('#authError').textContent='Přihlášení nebo registrace se nezdařily. Zkontrolujte údaje, potvrzení e-mailu a členství v týmu.'}finally{$('#loginSubmit').disabled=false}};
+$('#cancelRecovery').onclick=async()=>{
+ forgetRecovery();
+ recoveryMode=false;
+ recoveryReady=false;
+ if(user)await signOutCurrentBrowser();
+ else location.replace(appReturnUrl);
+};
 $('#forgot').onclick=async()=>{const email=$('#email').value;if(!email||!$('#email').checkValidity()){$('#authError').textContent='Nejprve vyplňte platný e-mail.';return}const r=await db.auth.resetPasswordForEmail(email,{redirectTo:appReturnUrl});$('#authError').textContent=r.error?'Odkaz se nepodařilo odeslat.':'Pokud účet existuje, přijde vám odkaz pro obnovu hesla.'};
 $('#export').onclick=()=>{const rows=[['Název','Datum','Garant DVPP','Forma','Místo','Odkaz','Popis','Reflexe','Náklady Kč','Stav','Celkové hodnocení'],...filtered().map(a=>[a.title,a.activity_date,person(a.user_id),formatLabel(a.format),a.location,a.url,a.description,reflectionPlainText(a.reflection),a.cost,labels[state(a)],a.rating||''])];const csv='\uFEFF'+rows.map(r=>r.map(v=>'"'+String(/^[=+\-@\t\r]/.test(String(v))?'\''+v:v).replaceAll('"','""')+'"').join(';')).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='osobni-rozvoj-dvpp.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
-async function init(){syncAuthView();if(demo){$('#notice').innerHTML='<span><b>Ukázkový režim</b> · Smyšlené aktivity pro vyzkoušení. Úpravy se ukládají pouze v tomto prohlížeči.</span><span>Týmové sdílení čeká na připojení Supabase.</span>';await load();return}$('#notice').hidden=true;$('#authButton').disabled=true;$('#addButton').disabled=true;try{const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/+esm');db=createClient(config.supabaseUrl,config.supabasePublishableKey,{auth:{storageKey:authStorageKey}});const {data,error}=await db.auth.getSession();if(error)throw error;user=data.session?.user||null;await load();$('#authButton').disabled=false;$('#loginSubmit').disabled=false;$('#forgot').disabled=false;db.auth.onAuthStateChange((event,session)=>{if(signingOut)return;user=session?.user||null;syncAuthView();if(event==='PASSWORD_RECOVERY')setTimeout(()=>{const pwd=prompt('Zadejte nové heslo (alespoň 8 znaků):');if(pwd&&pwd.length>=8)db.auth.updateUser({password:pwd}).then(r=>toast(r.error?'Heslo se nepodařilo změnit.':'Heslo bylo změněno.'));},0);setTimeout(()=>load().catch(err=>toast(err.message)),0)});db.channel('activities-changes').on('postgres_changes',{event:'*',schema:'public',table:'dvpp_activities'},()=>load().catch(err=>toast(err.message))).subscribe()}catch(err){$('#notice').hidden=false;$('#notice').textContent='Společný prostor se nepodařilo načíst. '+err.message;$('#authError').textContent='Přihlášení se nepodařilo načíst. Obnovte stránku a zkuste to znovu.';render()}}
+async function init(){
+ syncAuthView();
+ if(demo){
+  $('#notice').innerHTML='<span><b>Ukázkový režim</b> · Smyšlené aktivity pro vyzkoušení. Úpravy se ukládají pouze v tomto prohlížeči.</span><span>Týmové sdílení čeká na připojení Supabase.</span>';
+  await load();
+  return;
+ }
+ $('#notice').hidden=true;
+ $('#authButton').disabled=true;
+ $('#addButton').disabled=true;
+ try{
+  const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/+esm');
+  db=createClient(config.supabaseUrl,config.supabasePublishableKey,{auth:{storageKey:authStorageKey}});
+  // Subscribe before awaiting initialization: recovery events are emitted while the URL is processed.
+  db.auth.onAuthStateChange(handleAuthChange);
+  const {data,error}=await db.auth.getSession();
+  if(error)throw error;
+  user=data.session?.user||null;
+  try{
+   if(user&&sessionStorage.getItem(recoveryStorageKey)===user.id){
+    recoveryMode=true;
+    recoveryReady=true;
+   }else if(!recoveryReady){
+    forgetRecovery();
+   }
+  }catch{}
+  authInitialized=true;
+  if(recoveryMode){
+   syncAuthView();
+   if(!recoveryReady)$('#recoveryError').textContent='Odkaz pro obnovu hesla je neplatný nebo vypršel. Vraťte se k přihlášení a požádejte o nový.';
+  }else await load();
+  $('#authButton').disabled=false;
+  $('#loginSubmit').disabled=false;
+  $('#forgot').disabled=false;
+  db.channel('activities-changes').on('postgres_changes',{event:'*',schema:'public',table:'dvpp_activities'},()=>{
+   if(!recoveryMode)load().catch(err=>toast(err.message));
+  }).subscribe();
+ }catch(err){
+  if(recoveryMode){
+   recoveryReady=false;
+   syncAuthView();
+   $('#recoveryError').textContent='Odkaz pro obnovu hesla se nepodařilo ověřit. Vraťte se k přihlášení a požádejte o nový.';
+  }else{
+   $('#notice').hidden=false;
+   $('#notice').textContent='Společný prostor se nepodařilo načíst. '+err.message;
+   $('#authError').textContent='Přihlášení se nepodařilo načíst. Obnovte stránku a zkuste to znovu.';
+   render();
+  }
+ }
+}
 init();

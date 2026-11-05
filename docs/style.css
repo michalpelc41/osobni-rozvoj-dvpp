@@ -398,3 +398,8 @@ main { padding-top: 4px; }
 
 main > footer { flex-wrap: wrap; }
 main > footer #updated { display: inline; white-space: nowrap; }
+
+#recoveryFields h2 { margin: 0 0 14px; }
+#recoveryFields p { font-size: 13px; }
+#recoverySubmit { width: 100%; background: var(--kcv-heading-teal); border-color: var(--kcv-heading-teal); }
+#recoveryError { color: #a12828; }
