@@ -415,3 +415,12 @@ body:not(.signed-out) {
   background-size: max(1920px, 100vw) auto;
   background-attachment: fixed;
 }
+
+/* Shared status labels across cards, table, timeline and activity detail. */
+.tag.tag.planned, .tag.tag.pending, .tag.tag.done {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  gap: 6px;
+}
+.tag .status-icon { width: 15px; height: 15px; flex: none; }
