@@ -247,7 +247,50 @@ $('#cancelRecovery').onclick=async()=>{
  if(user)await signOutCurrentBrowser();
  else location.replace(appReturnUrl);
 };
-$('#forgot').onclick=async()=>{const email=$('#email').value;if(!email||!$('#email').checkValidity()){$('#authError').textContent='Nejprve vyplňte platný e-mail.';return}const r=await db.auth.resetPasswordForEmail(email,{redirectTo:appReturnUrl});$('#authError').textContent=r.error?'Odkaz se nepodařilo odeslat.':'Pokud účet existuje, přijde vám odkaz pro obnovu hesla.'};
+function recoverySendError(error){
+ if(error?.code==='over_email_send_rate_limit'){
+  return 'Byl vyčerpán limit pro odesílání e-mailů. Vyčkejte přibližně hodinu a poté požádejte o nový odkaz. Opakované klikání nyní nepomůže.';
+ }
+ if(error?.status===429||error?.code==='over_request_rate_limit'){
+  return 'O obnovu hesla bylo požádáno příliš často. Vyčkejte chvíli a zkuste to znovu.';
+ }
+ if(error?.code==='email_address_not_authorized'){
+  return 'Poštovní služba zatím nemá povolené odesílání na tuto adresu. Obraťte se na správce aplikace.';
+ }
+ return 'Odkaz se nepodařilo odeslat. Zkontrolujte připojení a zkuste to později. Pokud chyba trvá, obraťte se na správce aplikace.';
+}
+let recoveryEmailPending=false;
+let recoveryEmailRetryAt=0;
+async function requestRecoveryEmail(){
+ if(recoveryEmailPending)return;
+ const email=$('#email').value.trim();
+ if(!email||!$('#email').checkValidity()){
+  $('#authError').textContent='Nejprve vyplňte platný e-mail.';
+  return;
+ }
+ if(Date.now()<recoveryEmailRetryAt){
+  $('#authError').textContent='Před další žádostí o obnovu hesla vyčkejte alespoň minutu.';
+  return;
+ }
+ recoveryEmailPending=true;
+ $('#forgot').disabled=true;
+ $('#authError').textContent='Odesílání odkazu…';
+ try{
+  const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:appReturnUrl});
+  if(error){
+   $('#authError').textContent=recoverySendError(error);
+   return;
+  }
+  recoveryEmailRetryAt=Date.now()+60000;
+  $('#authError').textContent='Pokud účet existuje, přijde vám odkaz pro obnovu hesla. Zkontrolujte také nevyžádanou poštu.';
+ }catch{
+  $('#authError').textContent=recoverySendError(null);
+ }finally{
+  recoveryEmailPending=false;
+  $('#forgot').disabled=false;
+ }
+}
+$('#forgot').onclick=requestRecoveryEmail;
 $('#export').onclick=()=>{const rows=[['Název','Datum','Garant DVPP','Forma','Místo','Odkaz','Popis','Reflexe','Náklady Kč','Stav','Celkové hodnocení'],...filtered().map(a=>[a.title,a.activity_date,person(a.user_id),formatLabel(a.format),a.location,a.url,a.description,reflectionPlainText(a.reflection),a.cost,labels[state(a)],a.rating||''])];const csv='\uFEFF'+rows.map(r=>r.map(v=>'"'+String(/^[=+\-@\t\r]/.test(String(v))?'\''+v:v).replaceAll('"','""')+'"').join(';')).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='osobni-rozvoj-dvpp.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
 async function init(){
  syncAuthView();
