@@ -285,7 +285,8 @@ header .account #identity { color: var(--ink); }
 }
 .card-format { margin-top: 5px; }
 .timeline-format { margin-top: 3px; }
-.meta, .timeline-location, .detail-date { color: var(--ink); }
+.meta, .timeline-location { color: var(--ink); }
+.detail-date { color: var(--kcv-heading-teal); }
 .tag { display: inline-flex; align-items: center; font-weight: 400; }
 .sectionhead { align-items: center; border-bottom: 0; }
 .sectionhead .tab, .sectionhead .tab.active {
@@ -394,3 +395,6 @@ main { padding-top: 4px; }
 #detailContent .primary { background: var(--kcv-heading-teal); border-color: var(--kcv-heading-teal); }
 #detailContent .primary:hover { background: #005e57; border-color: #005e57; }
 #editor input[name="title"] { font-size: 16.445px; font-weight: 700; }
+
+main > footer { flex-wrap: wrap; }
+main > footer #updated { display: inline; white-space: nowrap; }
