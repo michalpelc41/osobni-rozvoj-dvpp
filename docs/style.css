@@ -337,7 +337,7 @@ body.signed-out #auth {
   border-bottom: 0;
 }
 .auth-brand-title { font-size: clamp(17.85px, 2.55vw, 24.65px); color: #000; font-weight: 600; }
-.auth-brand-subtitle { color: var(--kcv-heading-teal); font-weight: 600; }
+.auth-brand-subtitle { color: var(--kcv-heading-teal); font-weight: 400; }
 .auth-fields { padding: 12px clamp(22px, 4vw, 38px) clamp(22px, 4vw, 38px); min-width: 0; }
 .auth-fields label { margin-bottom: 14px; }
 .auth-fields .dialoghead { margin-bottom: 12px; }
