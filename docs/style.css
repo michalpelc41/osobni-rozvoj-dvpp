@@ -410,7 +410,8 @@ body:not(.signed-out) {
   background-color: #fff;
   background-image: url('assets/board-watercolor.webp');
   background-repeat: no-repeat;
-  background-position: center 100px;
+  /* Offset the artwork's white top margin so the color starts in the lower third. */
+  background-position: center calc(66.667vh - max(150px, 7.8125vw));
   background-size: max(1920px, 100vw) auto;
   background-attachment: fixed;
 }
