@@ -417,10 +417,12 @@ body:not(.signed-out) {
 }
 
 /* Shared status labels across cards, table, timeline and activity detail. */
-.tag.tag.planned, .tag.tag.pending, .tag.tag.done {
+.tag.tag.tag.planned, .tag.tag.tag.pending, .tag.tag.tag.done {
   background: transparent;
   border: 0;
   padding: 0;
   gap: 6px;
 }
 .tag .status-icon { width: 15px; height: 15px; flex: none; }
+
+.timeline-content .timeline-author { margin-top: 12px; margin-left: 0; justify-content: flex-start; }
