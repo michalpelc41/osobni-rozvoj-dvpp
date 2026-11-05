@@ -322,7 +322,7 @@ header .account #identity { color: var(--ink); }
 footer { margin-top: 34px; font-size: 12px; }
 
 body.signed-out #auth {
-  width: min(600px, 100%);
+  width: min(510px, 100%);
   max-width: none;
   border: 0;
   padding: 0;
@@ -334,9 +334,9 @@ body.signed-out #auth {
   grid-column: 1 / -1;
   margin: 0;
   padding: 18px clamp(20px, 4vw, 38px);
-  border-bottom-color: #222;
+  border-bottom: 0;
 }
-.auth-brand-title { font-size: clamp(21px, 3vw, 29px); color: var(--kcv-heading-teal); font-weight: 800; }
+.auth-brand-title { font-size: clamp(21px, 3vw, 29px); color: #000; font-weight: 600; }
 .auth-brand-subtitle { color: var(--kcv-heading-teal); font-weight: 600; }
 .auth-fields { padding: clamp(22px, 4vw, 38px); min-width: 0; }
 .auth-fields label { margin-bottom: 14px; }
@@ -355,7 +355,7 @@ body.signed-out #auth {
 }
 #auth #toggleRegister:hover { color: #005e57; }
 .auth-registration-link { text-align: center; }
-#auth #loginSubmit { width: 100%; background: var(--kcv-blue); border-color: var(--kcv-blue); }
+#auth #loginSubmit { width: 100%; background: var(--kcv-heading-teal); border-color: var(--kcv-heading-teal); }
 #auth #loginSubmit:hover { background: #00638c; }
 #auth #forgot { color: #57324f; font-size: 12px; }
 @media (max-width: 650px) {
