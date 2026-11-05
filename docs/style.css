@@ -403,3 +403,14 @@ main > footer #updated { display: inline; white-space: nowrap; }
 #recoveryFields p { font-size: 13px; }
 #recoverySubmit { width: 100%; background: var(--kcv-heading-teal); border-color: var(--kcv-heading-teal); }
 #recoveryError { color: #a12828; }
+
+/* Original KCV watercolor artwork, visible only in the signed-in workspace. */
+body:not(.signed-out) {
+  min-height: 100vh;
+  background-color: #fff;
+  background-image: url('assets/board-watercolor.webp');
+  background-repeat: no-repeat;
+  background-position: center 100px;
+  background-size: max(1920px, 100vw) auto;
+  background-attachment: fixed;
+}
