@@ -119,7 +119,7 @@ header .account #identity{color:#307e72}
 .tablewrap td button[data-detail] b{font-weight:600}
 .tab.active,.views button,.views .selected{color:#000}
 .filters input, .filters select { font-size: 14px; font-weight: 400; }
-.cardtop{justify-content:flex-end}
+.cardtop{justify-content:flex-start}
 .cardtop>span.tag{color:inherit}
 .cardtop>span.tag.planned{color:#496783}
 .cardtop>span.tag.pending{color:#8a681c}
@@ -445,3 +445,6 @@ body:not(.signed-out) {
 .attachment-remove svg{width:15px;height:15px}
 #detailAttachments{margin-bottom:18px}#detailAttachments:empty{display:none}
 @media(max-width:450px){.attachment-row{flex-wrap:wrap}.attachment-name{flex:1}.attachment-size{margin-left:27px;order:2;width:calc(100% - 27px)}}
+
+/* Keep attachment rows in the activity detail free of divider lines. */
+#detailAttachments .attachment-row{border-bottom:0}
