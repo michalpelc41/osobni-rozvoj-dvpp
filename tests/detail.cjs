@@ -5,10 +5,10 @@ const source=fs.readFileSync(require('node:path').join(__dirname,'../docs/app.js
 let opened=0;
 const content={innerHTML:''};
 const activity={id:'activity-1',title:'Test detailu',activity_date:'2026-10-10',format:'Seminář',location:'Plzeň',url:'https://kcv.cz/',description:'Popis',reflection:'Reflexe',cost:100,user_id:'owner',rating:4};
-const context={activities:[activity],user:{id:'owner'},labels:{done:'Zreflektováno'},state:()=> 'done',safeUrl:x=>x||null,esc:x=>String(x??''),date:x=>x,person:()=> 'Garant',formatLabel:x=>x,renderReflection:x=>x,ratingMarkup:()=> '<span>4 / 5</span>',money:x=>x+' Kč',$:selector=>selector==='#detailContent'?content:{showModal:()=>opened++}};
+const context={attachments:{showDetail:()=>{}},activities:[activity],user:{id:'owner'},labels:{done:'Zreflektováno'},state:()=> 'done',safeUrl:x=>x||null,esc:x=>String(x??''),date:x=>x,person:()=> 'Garant',formatLabel:x=>x,renderReflection:x=>x,ratingMarkup:()=> '<span>4 / 5</span>',money:x=>x+' Kč',$:selector=>selector==='#detailContent'?content:{showModal:()=>opened++}};
 vm.createContext(context);
 vm.runInContext(source.slice(source.indexOf('const userIcon='),source.indexOf('function timelineMarkup(')),context);
-vm.runInContext(source.slice(source.indexOf('function detail(id)'),source.indexOf("document.addEventListener('click'")),context);
+vm.runInContext(source.slice(source.indexOf('function detail(id)'),source.indexOf("document.addEventListener('click'",source.indexOf('function detail(id)'))),context);
 context.detail(activity.id);
 assert.equal(opened,1);
 assert.match(content.innerHTML,/Otevřít odkaz/);

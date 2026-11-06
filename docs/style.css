@@ -426,3 +426,22 @@ body:not(.signed-out) {
 .tag .status-icon { width: 15px; height: 15px; flex: none; }
 
 .timeline-content .timeline-author { margin-top: 12px; margin-left: 0; justify-content: flex-start; }
+
+.reflection-attachments{margin-top:16px}
+#addAttachment{display:inline-flex;align-items:center;gap:7px;background:#30aca1;border-color:#30aca1;color:#fff;padding:7px 11px;font-size:13px;font-weight:500}
+#addAttachment:hover{background:#000;border-color:#000}
+#addAttachment svg{width:16px;height:16px;flex:none}
+#attachmentInput[hidden]{display:none}
+.attachment-list{padding:0;margin:10px 0 6px;list-style:none}
+.attachment-list:empty{display:none}
+.attachment-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #dce3dd;min-width:0;font-size:12px}
+.attachment-icon{width:19px;height:19px;flex:none;color:#333}
+.attachment-icon.pdf{color:#bd3636}.attachment-icon.word{color:#2361ab}.attachment-icon.powerpoint{color:#b64f27}.attachment-icon.excel{color:#217346}
+.attachment-name{font-size:12px;font-weight:400;color:#111;overflow-wrap:anywhere;min-width:0;text-align:left;padding:0;border:0;background:none;text-decoration:underline}
+.attachment-name:hover{color:#007970;background:none}
+.attachment-name:disabled{opacity:1;cursor:default;text-decoration:none}
+.attachment-size{color:#667570;font-size:11px;white-space:nowrap;margin-left:auto}
+.attachment-remove{padding:4px;border:0;background:none;flex:none;line-height:1}
+.attachment-remove svg{width:15px;height:15px}
+#detailAttachments{margin-bottom:18px}#detailAttachments:empty{display:none}
+@media(max-width:450px){.attachment-row{flex-wrap:wrap}.attachment-name{flex:1}.attachment-size{margin-left:27px;order:2;width:calc(100% - 27px)}}
