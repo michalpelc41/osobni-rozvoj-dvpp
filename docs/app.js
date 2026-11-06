@@ -116,11 +116,12 @@ function syncAuthView(){
  }else if($('#auth').open)$('#auth').close();
 }
 const userIcon='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="6" r="5"/><path d="M4 22a8 8 0 0 1 16 0v1H4Z"/></svg>';
+const clipIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 13 7-7a3 3 0 0 1 4 4L9 20a5 5 0 0 1-7-7L12 3a7 7 0 0 1 10 10L12 23" transform="translate(1 -1) scale(.9)"/></svg>';
 const calendarIcon='<svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><path d="M3 8h18v13H3V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3M8 1v4M16 1v4"/><path fill="currentColor" stroke="none" d="M7 11h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2zm-8 5h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>';
 const statusIcons={
  done:'<circle cx="12" cy="12" r="11"/><path d="m6.5 12 3.5 3.5 7.5-8" fill="none" stroke="white" stroke-width="2.5"/>',
  pending:'<path d="M6 1h12c2 0 2 3 1 5-1 3-3 5-5 6 5 3 6 7 6 11H4c0-4 1-8 6-11C8 11 6 9 5 6 4 4 4 1 6 1Zm6 13-5 6h10Z" fill-rule="evenodd"/>',
- planned:'<path d="M5 5c0-3 3-4 5-2l10 7c2 1 2 3 0 4l-10 7c-2 2-5 1-5-2Z"/>'
+ planned:'<circle cx="12" cy="12" r="11"/><path d="M12 5v7l4 3" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
 };
 function statusMarkup(a){const status=state(a);return `<span class="tag ${status}"><svg class="status-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${statusIcons[status]}</svg><span>${labels[status]}</span></span>`;}
 const pinIcon='<svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
