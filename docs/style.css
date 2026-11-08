@@ -448,3 +448,12 @@ body:not(.signed-out) {
 
 /* Keep attachment rows in the activity detail free of divider lines. */
 #detailAttachments .attachment-row{border-bottom:0}
+
+#export {
+  background-color: #fff;
+}
+
+.filters select:has(option:checked:not([value=""], [selected])) {
+  background-color: #e2efe7;
+  color: #175538;
+}
