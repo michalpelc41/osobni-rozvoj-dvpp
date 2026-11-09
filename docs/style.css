@@ -76,9 +76,9 @@ header .account #identity{display:flex;align-items:center;gap:7px;min-width:0}
 .timeline-side{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;gap:18px}
 .timeline-tags{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .timeline-author{display:flex;align-items:center;gap:7px;font-size:12px}
-.timeline-today{position:relative;display:flex;align-items:center;gap:14px;padding:4px 0 20px;font-size:11px;color:var(--green)}
-.timeline-today:after{content:"";flex:1;border-top:1px dashed #85aaa2}
-.timeline-today>span{background:var(--bg);border:1px solid #85aaa2;border-radius:7px;padding:4px 8px;z-index:1}
+.timeline-today{position:relative;display:flex;align-items:center;gap:14px;padding:4px 0 20px;font-size:11px;color:#a90090}
+.timeline-today:after{content:"";flex:1;border-top:1px dashed currentColor}
+.timeline-today>span{background:var(--bg);border:1px solid currentColor;border-radius:7px;padding:4px 8px;z-index:1}
 @media(max-width:1050px){.timeline{--gutter:140px}.timeline-month{font-size:17px}.timeline-card{grid-template-columns:70px minmax(0,1fr)}.timeline-side{grid-column:2;flex-direction:row;align-items:center;flex-wrap:wrap;gap:10px}.timeline-author{margin-left:auto}}
 @media(max-width:650px){header .account{flex-direction:row;align-items:center;gap:10px}.intro{padding:6px 0 10px;gap:10px}.intro h2{font-size:22px}.intro p{font-size:12px}.timeline{--gutter:10px;--timeline-indent:34px}.timeline-row{display:block;padding-bottom:14px}.timeline-month{margin:0 0 10px 34px;font-size:17px}.timeline-month:empty{display:none}.timeline-card{margin-left:var(--timeline-indent);padding:14px;gap:10px;grid-template-columns:60px minmax(0,1fr)}.timeline-card:before{left:calc(var(--gutter) + .5px - var(--timeline-indent) - 1px)}.timeline-card:after{left:-19px;width:18px}.timeline-content h3{font-size:16px}.timeline-date strong{font-size:15px}.timeline-side{grid-column:1/-1}.timeline-tags .tag{font-size:10px}.timeline-today{padding-bottom:16px}.timeline-author{font-size:11px}.views button{font-size:11px;padding:6px 8px}}
 
@@ -89,7 +89,6 @@ header .account #identity{color:#307e72}
 @media(max-width:650px){header .brand-copy{min-height:65px;flex:1}}
 
 .timeline-card:after{display:none}
-.timeline-today>span{color:#d02fb7}
 .views button[data-view="timeline"]{display:inline-flex;align-items:center;gap:5px}
 .views button[data-view="timeline"] svg{width:15px;height:15px;flex-shrink:0;pointer-events:none}
 @media(max-width:1050px){
@@ -202,7 +201,7 @@ header .account{flex-direction:column;align-items:flex-end;gap:2px}
 header .account{row-gap:0}
 header .account #identity{font-size:14.4px;line-height:1.25}
 #authButton{padding:0;line-height:1.25}
-.rating-field{margin-top:18px;padding-top:2px}
+.rating-field{margin-top:18px;padding-top:0}
 .rating-field>p{margin:0 0 6px}
 #ratingHint:empty{display:none}
 
@@ -235,7 +234,6 @@ body.signed-out #loginPattern{background-image:url('assets/login-background.png'
 
 /* Chronologický přehled a čitelnější metadata detailu. */
 .timeline-month{color:#000}
-.timeline-today>span{color:#a90090}
 .timeline-content h3{margin-bottom:0}
 .timeline-format{margin-top:0}
 .timeline-date span{padding-right:5px;line-height:1.2;margin-top:1px}
@@ -298,6 +296,7 @@ header .account #identity { color: var(--ink); }
   border-radius: 0;
   box-shadow: none;
   padding: 12px 14px;
+  font-size: 15.4px;
 }
 .sectionhead .tab[data-tab="stats"] { width: auto; }
 .sectionhead .tab.active { color: var(--green); background: var(--pale); }
@@ -362,7 +361,7 @@ body.signed-out #auth {
   #authForm { grid-template-columns: minmax(0, 1fr); }
   body.signed-out #auth { padding: 0; }
   .auth-brand-subtitle { font-size: 13px; }
-  .sectionhead .tab, .sectionhead .tab.active { font-size: 13.2px; padding-inline: 7px; }
+  .sectionhead .tab, .sectionhead .tab.active { font-size: 14.52px; padding-inline: 7px; }
 }
 
 #detail, #editor, #detail button, #editor :is(input, select, textarea, button, .rich-editor) { border-radius: 0; }
@@ -428,6 +427,7 @@ body:not(.signed-out) {
 .timeline-content .timeline-author { margin-top: 12px; margin-left: 0; justify-content: flex-start; }
 
 .reflection-attachments{margin-top:16px}
+#attachmentList:empty + small{display:inline-block;margin-inline-start:8px}
 #addAttachment{display:inline-flex;align-items:center;gap:7px;background:#30aca1;border-color:#30aca1;color:#fff;padding:7px 11px;font-size:13px;font-weight:500}
 #addAttachment:hover{background:#000;border-color:#000}
 #addAttachment svg{width:16px;height:16px;flex:none}
