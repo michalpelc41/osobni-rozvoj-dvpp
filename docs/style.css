@@ -481,9 +481,13 @@ body:not(.signed-out) {
   color: #174f94;
 }
 
-.sectionhead .tab[data-tab="ideas"]:is(.active, :hover) {
+.sectionhead .tab[data-tab="ideas"].active {
   background: #d8e8ff;
   color: #123c70;
+}
+
+.sectionhead .tab[data-tab="ideas"]:hover {
+  background: #c5ddfc;
 }
 
 #addIdea {
@@ -518,6 +522,17 @@ body:not(.signed-out) {
   overflow-wrap: anywhere;
 }
 
+.idea-card h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.idea-card h3 a:is(:hover, :focus-visible) {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.17em;
+}
+
 .idea-card .idea-description {
   margin: 0 0 14px;
   white-space: pre-wrap;
@@ -536,6 +551,14 @@ body:not(.signed-out) {
 #ideaEditor, #ideaEditor :is(input, select, textarea, button),
 #deleteIdeaDialog, #deleteIdeaDialog button {
   border-radius: 0;
+}
+
+#ideaForm :is(input, select, textarea) {
+  font-weight: 400;
+}
+
+#ideaForm input[name="title"] {
+  font-size: 1.15em;
 }
 
 #deleteIdeaName {

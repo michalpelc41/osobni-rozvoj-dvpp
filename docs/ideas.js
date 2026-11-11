@@ -43,8 +43,12 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
     cards.innerHTML = sorted.map(idea => {
       const url = safeUrl(idea.url);
       const author = idea.author_id ? person(idea.author_id) : 'Bývalý člen týmu';
+      const title = esc(idea.title);
+      const heading = url
+        ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${title}</a>`
+        : title;
       return `<article class="card idea-card">
-        <h3>${esc(idea.title)}</h3>
+        <h3>${heading}</h3>
         <p class="card-format">${esc(idea.format)}</p>
         <p class="idea-description">${esc(idea.description)}</p>
         ${url ? `<a class="idea-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Otevřít odkaz ↗</a>` : ''}

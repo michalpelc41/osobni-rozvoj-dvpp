@@ -1,4 +1,4 @@
-import {createIdeasBoard} from './ideas.js?v=20261111-ideas1';
+import {createIdeasBoard} from './ideas.js?v=20261111-ideas2';
 import {createAttachmentController} from './attachments.js?v=20261106-attachments1';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
