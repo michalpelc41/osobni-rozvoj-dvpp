@@ -28,6 +28,42 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
   let loadError = false;
   let busy = false;
 
+  function arrangeCards() {
+    if (!cards.clientWidth) return;
+    const style = getComputedStyle(cards);
+    const widths = style.gridTemplateColumns.split(' ').map(parseFloat);
+    const gap = parseFloat(style.columnGap);
+    const positions = [];
+    const bottoms = widths.map(() => 0);
+    let left = 0;
+    for (const width of widths) {
+      positions.push(left);
+      left += width + gap;
+    }
+
+    cards.classList.add('idea-masonry');
+    // Set the common track width before measuring wrapped text.
+    for (const card of cards.children) card.style.width = `${widths[0]}px`;
+    const heights = Array.from(cards.children, card => card.getBoundingClientRect().height);
+    Array.from(cards.children).forEach((card, index) => {
+      const shortest = Math.min(...bottoms);
+      const column = bottoms.indexOf(shortest);
+      card.style.left = `${positions[column]}px`;
+      card.style.top = `${shortest}px`;
+      bottoms[column] += heights[index] + gap;
+    });
+    cards.style.height = `${Math.max(0, Math.max(...bottoms) - gap)}px`;
+  }
+
+  let layoutFrame = 0;
+  const layoutObserver = new ResizeObserver(() => {
+    if (layoutFrame) return;
+    layoutFrame = requestAnimationFrame(() => {
+      layoutFrame = 0;
+      arrangeCards();
+    });
+  });
+
   function render() {
     add.disabled = !account || loading || loadError;
     retry.hidden = !loadError;
@@ -59,6 +95,10 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
         </div></div>
       </article>`;
     }).join('');
+    layoutObserver.disconnect();
+    arrangeCards();
+    layoutObserver.observe(cards);
+    for (const card of cards.children) layoutObserver.observe(card, {box: 'border-box'});
   }
 
   async function load() {

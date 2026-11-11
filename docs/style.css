@@ -517,6 +517,14 @@ body:not(.signed-out) {
   align-items: start;
 }
 
+#ideaCards.idea-masonry {
+  position: relative;
+}
+
+#ideaCards.idea-masonry > .idea-card {
+  position: absolute;
+}
+
 .idea-card h3 {
   margin-top: 0;
   overflow-wrap: anywhere;
