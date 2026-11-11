@@ -2,7 +2,7 @@ const storageKey = 'dvpp-demo-ideas';
 const editIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z"/><path d="m14 5 5 5"/></svg>';
 const deleteIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg>';
 
-export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUrl, person, userIcon, toast}) {
+export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUrl, person, userIcon, toast, richPrefix, cleanRichHtml}) {
   const $ = id => document.getElementById(id);
   const section = $('ideas');
   const status = $('ideasStatus');
@@ -11,6 +11,8 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
   const add = $('addIdea');
   const editor = $('ideaEditor');
   const form = $('ideaForm');
+  const description = $('ideaDescription');
+  const formatButtons = form.querySelectorAll('[data-idea-format]');
   const save = $('saveIdea');
   const deleteDialog = $('deleteIdeaDialog');
   const confirmDelete = $('confirmIdeaDelete');
@@ -27,6 +29,45 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
   let loading = false;
   let loadError = false;
   let busy = false;
+  let descriptionRange = null;
+
+  function renderDescription(value) {
+    return value.startsWith(richPrefix) ? cleanRichHtml(value.slice(richPrefix.length)) : esc(value);
+  }
+
+  document.addEventListener('selectionchange', () => {
+    const selection = window.getSelection();
+    if (selection.rangeCount && description.contains(selection.getRangeAt(0).commonAncestorContainer)) {
+      descriptionRange = selection.getRangeAt(0).cloneRange();
+    }
+  });
+
+  for (const button of formatButtons) {
+    button.onmousedown = event => event.preventDefault();
+    button.onclick = () => {
+      const selection = window.getSelection();
+      const currentRange = selection.rangeCount && selection.getRangeAt(0);
+      let range = currentRange && description.contains(currentRange.commonAncestorContainer)
+        ? currentRange.cloneRange()
+        : descriptionRange;
+      if (!range || !description.contains(range.commonAncestorContainer)) {
+        range = document.createRange();
+        range.selectNodeContents(description);
+        range.collapse(false);
+      }
+      description.focus();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.execCommand('styleWithCSS', false, false);
+      document.execCommand(button.dataset.ideaFormat);
+    };
+  }
+
+  description.addEventListener('paste', event => {
+    event.preventDefault();
+    document.execCommand('insertText', false, event.clipboardData.getData('text/plain'));
+  });
+  description.addEventListener('drop', event => event.preventDefault());
 
   function arrangeCards() {
     if (!cards.clientWidth) return;
@@ -86,7 +127,7 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
       return `<article class="card idea-card">
         <h3>${heading}</h3>
         <p class="card-format">${esc(idea.format)}</p>
-        <p class="idea-description">${esc(idea.description)}</p>
+        <div class="idea-description">${renderDescription(idea.description)}</div>
         <div class="cardfoot"><div class="person">${userIcon}<span>${esc(author)}</span>
           <div class="cardactions">
             <button type="button" data-edit-idea="${esc(idea.id)}" aria-label="Upravit příspěvek" title="Upravit příspěvek">${editIcon}</button>
@@ -140,6 +181,8 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
       editingId = null;
       deletingId = null;
       form.reset();
+      description.replaceChildren();
+      descriptionRange = null;
       $('deleteIdeaName').textContent = '';
       cards.replaceChildren();
     }
@@ -151,11 +194,13 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
   function openEditor(idea) {
     if (!account || busy || loading) return;
     form.reset();
+    description.innerHTML = idea ? renderDescription(idea.description) : '';
+    descriptionRange = null;
     editingId = idea?.id ?? null;
     $('ideaError').textContent = '';
     $('ideaEditorTitle').textContent = idea ? 'Upravit příspěvek' : 'Přidat inspiraci';
     if (idea) {
-      for (const field of ['title', 'format', 'description', 'url']) form.elements[field].value = idea[field];
+      for (const field of ['title', 'format', 'url']) form.elements[field].value = idea[field];
     }
     editor.showModal();
   }
@@ -198,10 +243,19 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
     const owner = account;
     const id = editingId;
     const data = new FormData(form);
-    const payload = Object.fromEntries(['title', 'format', 'description', 'url'].map(field => [field, data.get(field).trim()]));
+    const payload = Object.fromEntries(['title', 'format', 'url'].map(field => [field, data.get(field).trim()]));
     const error = $('ideaError');
-    if (!payload.title || !payload.description || (payload.url && !safeUrl(payload.url))) {
+    const plainDescription = description.innerText.trim();
+    if (!payload.title || !plainDescription || (payload.url && !safeUrl(payload.url))) {
       error.textContent = 'Vyplňte název a popis. Odkaz musí začínat https:// nebo http://.';
+      return;
+    }
+    const formatted = description.querySelector('b, strong, i, em, u');
+    payload.description = formatted || plainDescription.startsWith(richPrefix)
+      ? richPrefix + cleanRichHtml(description.innerHTML)
+      : plainDescription;
+    if (Array.from(payload.description).length > 10000) {
+      error.textContent = 'Popis je příliš dlouhý. Zkraťte text nebo uberte formátování.';
       return;
     }
     error.textContent = '';

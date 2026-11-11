@@ -555,12 +555,29 @@ body:not(.signed-out) {
   border-radius: 0;
 }
 
-#ideaForm :is(input, select, textarea) {
+#ideaForm :is(input, select) {
   font-weight: 400;
 }
 
 #ideaForm input[name="title"] {
   font-size: 1.15em;
+  font-weight: 700;
+}
+
+#ideaForm input[name="url"] {
+  color: var(--green);
+}
+
+.idea-description-field {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+#ideaDescription {
+  min-height: 115px;
+  border-radius: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 #deleteIdeaName {

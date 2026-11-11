@@ -1,4 +1,4 @@
-import {createIdeasBoard} from './ideas.js?v=20261111-ideas4';
+import {createIdeasBoard} from './ideas.js?v=20261111-idea-formatting';
 import {createAttachmentController} from './attachments.js?v=20261106-attachments1';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -198,8 +198,8 @@ function openEditor(id) {
 function syncReflection(){const f=$('#activityForm'),future=f.elements.activity_date.value>today();attachments.setDisabled(future);f.elements.reflection.disabled=future;$('#reflectionEditor').contentEditable=String(!future);$('#reflectionEditor').setAttribute('aria-disabled',String(future));$('#reflectionLinkToggle').disabled=future;$('#reflectionLinkPanel').hidden=true;$('#reflectionLinkToggle').setAttribute('aria-expanded','false');$$('[data-reflection-format],[data-rating]').forEach(b=>b.disabled=future);$('#clearRating').disabled=future;$('#ratingHint').textContent=future?'Hodnocení můžete doplnit od data absolvování aktivity.':'';$('#reflectionHint').textContent=future?'Reflexi můžete doplnit od data absolvování aktivity.':'Co si odnášíte a jak to využijete ve své práci?'}
 const richPrefix='@dvpp-richtext:';
 function cleanReflectionHtml(html){
- const root=document.createElement('div');root.innerHTML=String(html||'');
- const allowed=new Set(['P','DIV','BR','B','STRONG','I','EM','UL','OL','LI']);
+ const root=document.createElement('template');root.innerHTML=String(html||'');
+ const allowed=new Set(['P','DIV','BR','B','STRONG','I','EM','U','UL','OL','LI']);
  function clean(node){
   if(node.nodeType===3)return esc(node.textContent);
   if(node.nodeType!==1||['SCRIPT','STYLE','IFRAME','OBJECT','SVG','MATH'].includes(node.tagName))return '';
@@ -208,7 +208,7 @@ function cleanReflectionHtml(html){
   if(!allowed.has(node.tagName))return content;
   const tag=node.tagName.toLowerCase();return tag==='br'?'<br>':`<${tag}>${content}</${tag}>`;
  }
- return [...root.childNodes].map(clean).join('');
+ return [...root.content.childNodes].map(clean).join('');
 }
 function loadReflectionEditor(){const value=$('#reflectionText').value;$('#reflectionEditor').innerHTML=value.trim()?renderReflection(value):'';reflectionRange=null;}
 function syncReflectionValue(){const editor=$('#reflectionEditor'),value=editor.textContent.trim()?richPrefix+cleanReflectionHtml(editor.innerHTML):'';$('#reflectionText').value=value;return value;}
@@ -408,5 +408,7 @@ const ideas = createIdeasBoard({
   person,
   userIcon,
   toast,
+  richPrefix,
+  cleanRichHtml: cleanReflectionHtml,
 });
 init();
