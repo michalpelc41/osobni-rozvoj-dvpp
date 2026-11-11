@@ -539,11 +539,6 @@ body:not(.signed-out) {
   overflow-wrap: anywhere;
 }
 
-.idea-card .idea-link {
-  align-self: flex-start;
-  margin-bottom: 14px;
-}
-
 .idea-card .person {
   flex-wrap: wrap;
 }

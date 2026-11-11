@@ -51,7 +51,6 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
         <h3>${heading}</h3>
         <p class="card-format">${esc(idea.format)}</p>
         <p class="idea-description">${esc(idea.description)}</p>
-        ${url ? `<a class="idea-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Otevřít odkaz ↗</a>` : ''}
         <div class="cardfoot"><div class="person">${userIcon}<span>${esc(author)}</span>
           <div class="cardactions">
             <button type="button" data-edit-idea="${esc(idea.id)}" aria-label="Upravit příspěvek" title="Upravit příspěvek">${editIcon}</button>
