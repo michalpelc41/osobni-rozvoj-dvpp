@@ -5,7 +5,12 @@ const money=n=>new Intl.NumberFormat('cs-CZ',{style:'currency',currency:'CZK',mi
 const localDate=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
 const today=()=>localDate(new Date()); const date=d=>new Intl.DateTimeFormat('cs-CZ').format(new Date(d+'T12:00:00'));
 const state=a=>a.reflection?.trim()?'done':a.activity_date<=today()?'pending':'planned';
-const formatLabel=value=>value==='Článek'?'Online zdroj':value;
+const legacyFormatLabels = new Map([
+  ['Článek', 'On-line zdroj'],
+  ['Online kurz', 'E-learning'],
+  ['Kniha', 'Publikace'],
+]);
+const formatLabel = value => legacyFormatLabels.get(value) ?? value;
 const labels={done:'Zreflektováno',pending:'Čeká na reflexi',planned:'Plánováno'};
 const safeUrl=s=>{try{const u=new URL(s);return ['https:','http:'].includes(u.protocol)?u.href:''}catch{return ''}};
 const appReturnUrl=new URL('./',location.href).href;
@@ -35,7 +40,7 @@ const attachments=createAttachmentController({getDb:()=>db,getUser:()=>user,isDe
 let activitySaving=false;
 $('#editor').addEventListener('cancel',e=>{if(activitySaving)e.preventDefault();});
 document.addEventListener('click',e=>{if(activitySaving&&e.target.closest('#editor')){e.preventDefault();e.stopImmediatePropagation();}},true);
-function filtered(){const q=$('#search').value.toLocaleLowerCase('cs'),owner=$('#owner').value,status=$('#status').value,format=$('#formatFilter').value;const year=Number($('#period').value),from=year+'-09-01',to=(year+1)+'-08-31';return activities.filter(a=>(!owner||a.user_id===owner)&&(!status||state(a)===status)&&(!format||a.format===format)&&a.activity_date>=from&&a.activity_date<=to&&(!q||[a.title,a.description,a.location,person(a.user_id)].join(' ').toLocaleLowerCase('cs').includes(q))).sort((a,b)=>a.activity_date.localeCompare(b.activity_date)||a.title.localeCompare(b.title,'cs'))}
+function filtered(){const q=$('#search').value.toLocaleLowerCase('cs'),owner=$('#owner').value,status=$('#status').value,format=$('#formatFilter').value;const year=Number($('#period').value),from=year+'-09-01',to=(year+1)+'-08-31';return activities.filter(a=>(!owner||a.user_id===owner)&&(!status||state(a)===status)&&(!format||formatLabel(a.format)===format)&&a.activity_date>=from&&a.activity_date<=to&&(!q||[a.title,a.description,a.location,person(a.user_id)].join(' ').toLocaleLowerCase('cs').includes(q))).sort((a,b)=>a.activity_date.localeCompare(b.activity_date)||a.title.localeCompare(b.title,'cs'))}
 function bars(selector,entries,format=n=>String(n)){const max=Math.max(...entries.map(x=>x[1]),1);$(selector).innerHTML=entries.length?entries.map(([name,n])=>`<div class="barrow"><div class="barlabel"><span>${esc(name)}</span><b>${esc(format(n))}</b></div><div class="track"><div class="bar" style="width:${n/max*100}%"></div></div></div>`).join(''):'<p>Pro tento výběr nejsou k dispozici žádné aktivity.</p>'}
 function syncRecoveryFields(){
  $('#auth').setAttribute('aria-labelledby',recoveryMode?'recoveryTitle':'authTitle');
@@ -149,7 +154,41 @@ function updateOwners(){const old=$('#owner').value;$('#owner').innerHTML='<opti
 async function allRows(table,columns,order){let rows=[];for(let offset=0;;offset+=1000){const r=await db.from(table).select(columns).order(order,{ascending:true}).range(offset,offset+999);if(r.error)throw Error('Data se nepodařilo načíst. Ověřte přístup do týmu a připojení.');rows.push(...r.data);if(r.data.length<1000)return rows;}}
 let loadRevision=0;
 async function load(){const revision=++loadRevision,accountId=user?.id;if(demo){profiles=demoProfiles;try{activities=JSON.parse(localStorage.getItem('dvpp-demo-v1'))||structuredClone(samples)}catch{activities=structuredClone(samples)}}else if(user){const membership=await db.from('dvpp_team_members').select('approved').eq('user_id',user.id).maybeSingle();if(membership.error)throw Error('Nelze ověřit členství v týmu.');const approved=membership.data?.approved===true;$('#notice').hidden=approved;$('#notice').textContent=approved?'':'Váš účet čeká na schválení správcem týmu. Teprve poté uvidíte a přidáte společné aktivity.';$('#addButton').disabled=!approved;const [nextActivities,nextProfiles]=await Promise.all([allRows('dvpp_activities','*','id'),allRows('dvpp_profiles','id, display_name','id')]);if(revision!==loadRevision||accountId!==user?.id)return;activities=nextActivities;profiles=nextProfiles;}else{activities=[];profiles=[];$('#notice').hidden=true;$('#addButton').disabled=false}updateOwners();$('#updated').textContent='Aktualizováno '+new Intl.DateTimeFormat('cs-CZ',{hour:'2-digit',minute:'2-digit'}).format(new Date());render()}
-function openEditor(id){if(!user){$('#auth').showModal();return}const a=activities.find(a=>a.id===id);if(a&&a.user_id!==user.id)return;$('#activityForm').reset();$('#formError').textContent='';$('#editorTitle').textContent=a?'Upravit rozvojovou aktivitu':'Nová rozvojová aktivita';for(const name of ['id','title','activity_date','format','location','url','description','cost','reflection','rating'])$('#activityForm').elements[name].value=a?.[name]??(name==='activity_date'?today():name==='cost'?0:name==='format'?'Seminář':'');loadReflectionEditor();syncReflection();renderRatingPicker();attachments.open(a?.id);$('#editor').showModal()}
+function openEditor(id) {
+  if (!user) {
+    $('#auth').showModal();
+    return;
+  }
+  const activity = activities.find(item => item.id === id);
+  if (activity && activity.user_id !== user.id) return;
+
+  const form = $('#activityForm');
+  const format = form.elements.format;
+  format.querySelector('[data-legacy-format]')?.remove();
+  form.reset();
+
+  if (activity) {
+    const label = formatLabel(activity.format);
+    if (![...format.options].some(option => option.value === label)) {
+      const option = new Option(label, activity.format);
+      option.dataset.legacyFormat = '';
+      format.add(option);
+    }
+    format.value = label;
+  }
+
+  $('#formError').textContent = '';
+  $('#editorTitle').textContent = activity ? 'Upravit rozvojovou aktivitu' : 'Nová rozvojová aktivita';
+  const defaults = {activity_date: today(), cost: 0};
+  for (const name of ['id', 'title', 'activity_date', 'location', 'url', 'description', 'cost', 'reflection', 'rating']) {
+    form.elements[name].value = activity?.[name] ?? defaults[name] ?? '';
+  }
+  loadReflectionEditor();
+  syncReflection();
+  renderRatingPicker();
+  attachments.open(activity?.id);
+  $('#editor').showModal();
+}
 function syncReflection(){const f=$('#activityForm'),future=f.elements.activity_date.value>today();attachments.setDisabled(future);f.elements.reflection.disabled=future;$('#reflectionEditor').contentEditable=String(!future);$('#reflectionEditor').setAttribute('aria-disabled',String(future));$('#reflectionLinkToggle').disabled=future;$('#reflectionLinkPanel').hidden=true;$('#reflectionLinkToggle').setAttribute('aria-expanded','false');$$('[data-reflection-format],[data-rating]').forEach(b=>b.disabled=future);$('#clearRating').disabled=future;$('#ratingHint').textContent=future?'Hodnocení můžete doplnit od data absolvování aktivity.':'';$('#reflectionHint').textContent=future?'Reflexi můžete doplnit od data absolvování aktivity.':'Co si odnášíte a jak to využijete ve své práci?'}
 const richPrefix='@dvpp-richtext:';
 function cleanReflectionHtml(html){
