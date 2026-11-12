@@ -1,5 +1,5 @@
 import {createIdeaReview} from './idea-review.js?v=20261112-external-ideas';
-import {createIdeasBoard} from './ideas.js?v=20261112-idea-categories';
+import {createIdeasBoard} from './ideas.js?v=20261112-idea-masonry';
 import {createAttachmentController} from './attachments.js?v=20261106-attachments1';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

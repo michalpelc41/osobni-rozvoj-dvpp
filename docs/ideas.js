@@ -16,8 +16,8 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
   const retry = $('retryIdeas');
   const cards = $('ideaCards');
   const categories = [
-    {label: eventCategory, toggle: $('showIdeaEvents'), list: $('ideaEvents'), style: 'event'},
-    {label: resourceCategory, toggle: $('showIdeaResources'), list: $('ideaResources'), style: 'resource'},
+    {label: eventCategory, toggle: $('showIdeaEvents'), style: 'event'},
+    {label: resourceCategory, toggle: $('showIdeaResources'), style: 'resource'},
   ];
   const add = $('addIdea');
   const editor = $('ideaEditor');
@@ -80,6 +80,40 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
   const readRows = () => demo ? JSON.parse(localStorage.getItem(storageKey) || '[]') : loadRows();
   const newestFirst = (a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id);
 
+  const earliestEventFirst = (a, b) =>
+    (a.event_date || '9999-12-31').localeCompare(b.event_date || '9999-12-31') ||
+    Number(!a.event_date) - Number(!b.event_date) || newestFirst(a, b);
+
+  function layoutCards() {
+    const width = cards.getBoundingClientRect().width;
+    if (!width) return;
+    const style = getComputedStyle(cards);
+    const columns = Number(style.getPropertyValue('--idea-columns'));
+    const gap = parseFloat(style.columnGap);
+    const columnWidth = (width - (columns - 1) * gap) / columns;
+    const heights = Array.from(cards.children, card => card.getBoundingClientRect().height);
+    const bottoms = Array(columns).fill(0);
+
+    // Keep cards in reading order and place each one below the shortest stack.
+    Array.from(cards.children).forEach((card, index) => {
+      const top = Math.min(...bottoms);
+      const column = bottoms.indexOf(top);
+      card.style.insetInlineStart = `${column * (columnWidth + gap)}px`;
+      card.style.top = `${top}px`;
+      bottoms[column] = top + heights[index] + gap;
+    });
+    cards.style.height = `${Math.max(0, Math.max(...bottoms) - gap)}px`;
+  }
+
+  let layoutFrame = 0;
+  const layoutObserver = new ResizeObserver(() => {
+    if (layoutFrame) return;
+    layoutFrame = requestAnimationFrame(() => {
+      layoutFrame = 0;
+      layoutCards();
+    });
+  });
+
   async function exportRows() {
     const owner = getAccount();
     if (!owner) return [];
@@ -101,22 +135,30 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
     add.disabled = !account || loading || loadError;
     retry.hidden = !loadError;
     const enabled = categories.filter(category => category.toggle.checked);
+    for (const {toggle} of categories) toggle.disabled = add.disabled;
+    const matching = rows
+      .map(idea => ({idea, category: enabled.find(category => category.label === categoryOf(idea))}))
+      .filter(({category}) => category);
     status.textContent = '';
     if (!account) status.textContent = 'Inspirace jsou dostupné členům týmu DVPP.';
     else if (loading) status.textContent = 'Načítání příspěvků…';
     else if (loadError) status.textContent = 'Příspěvky se nepodařilo načíst.';
     else if (!enabled.length) status.textContent = 'Zapněte alespoň jednu kategorii.';
+    else if (!matching.length) status.textContent = 'Vybraným kategoriím neodpovídají žádné inspirace.';
     cards.hidden = Boolean(status.textContent);
 
-    const sorted = [...rows].sort(newestFirst);
-    for (const category of categories) {
-      category.toggle.disabled = add.disabled;
-      category.list.parentElement.hidden = !category.toggle.checked;
-      const matching = cards.hidden || !category.toggle.checked
-        ? [] : sorted.filter(idea => categoryOf(idea) === category.label);
-      category.list.innerHTML = matching.length
-        ? matching.map(idea => renderCard(idea, category)).join('')
-        : '<p class="idea-empty">V této kategorii zatím nejsou žádné inspirace.</p>';
+    const sort = enabled.length === 1 && enabled[0].label === eventCategory ? earliestEventFirst : newestFirst;
+    layoutObserver.disconnect();
+    cards.innerHTML = cards.hidden ? '' : matching
+      .sort((a, b) => sort(a.idea, b.idea))
+      .map(({idea, category}) => renderCard(idea, category)).join('');
+    if (!cards.hidden) {
+      const width = cards.getBoundingClientRect().width;
+      layoutCards();
+      // Showing the cards can add a page scrollbar and narrow the available space.
+      if (cards.getBoundingClientRect().width !== width) layoutCards();
+      layoutObserver.observe(cards);
+      for (const card of cards.children) layoutObserver.observe(card, {box: 'border-box'});
     }
   }
 
@@ -180,10 +222,9 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
       editingId = null;
       deletingId = null;
       form.reset();
-      for (const {toggle, list} of categories) {
-        toggle.checked = true;
-        list.replaceChildren();
-      }
+      for (const {toggle} of categories) toggle.checked = true;
+      layoutObserver.disconnect();
+      cards.replaceChildren();
       description.replaceChildren();
       descriptionRange = null;
       $('deleteIdeaName').textContent = '';
