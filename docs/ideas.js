@@ -2,12 +2,14 @@ const storageKey = 'dvpp-demo-ideas';
 const editIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z"/><path d="m14 5 5 5"/></svg>';
 const deleteIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg>';
 
-export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUrl, person, userIcon, toast, richPrefix, cleanRichHtml}) {
+export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUrl, person, userIcon, calendarIcon, date, toast, richPrefix, cleanRichHtml}) {
   const $ = id => document.getElementById(id);
   const section = $('ideas');
   const status = $('ideasStatus');
   const retry = $('retryIdeas');
   const cards = $('ideaCards');
+  const formatFilter = $('ideaFormatFilter');
+  const authorFilter = $('ideaAuthorFilter');
   const add = $('addIdea');
   const editor = $('ideaEditor');
   const form = $('ideaForm');
@@ -18,7 +20,9 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
   const confirmDelete = $('confirmIdeaDelete');
 
   for (const option of $('formatFilter').options) {
-    if (option.value) form.elements.format.add(option.cloneNode(true));
+    if (!option.value) continue;
+    form.elements.format.add(option.cloneNode(true));
+    formatFilter.add(option.cloneNode(true));
   }
 
   let account = null;
@@ -105,21 +109,38 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
     });
   });
 
+  const authorName = id => id ? person(id) : 'Bývalý člen týmu';
+
   function render() {
     add.disabled = !account || loading || loadError;
+    formatFilter.disabled = authorFilter.disabled = add.disabled;
     retry.hidden = !loadError;
+    const selectedAuthor = authorFilter.value;
+    if (!loading) {
+      const authors = [...new Set(rows.map(idea => idea.author_id))];
+      authors.sort((a, b) => authorName(a).localeCompare(authorName(b), 'cs'));
+      authorFilter.replaceChildren(new Option('Všichni garanti', ''),
+        ...authors.map(id => new Option(authorName(id), id ?? 'former')));
+      if (authors.some(id => (id ?? 'former') === selectedAuthor)) authorFilter.value = selectedAuthor;
+    }
+    const format = formatFilter.value;
+    const authorId = authorFilter.value;
+    const filtered = rows.filter(idea =>
+      (!format || idea.format === format) && (!authorId || (idea.author_id ?? 'former') === authorId)
+    );
     status.textContent = '';
     if (!account) status.textContent = 'Nápady jsou dostupné členům týmu DVPP.';
     else if (loading) status.textContent = 'Načítání příspěvků…';
     else if (loadError) status.textContent = 'Příspěvky se nepodařilo načíst.';
     else if (!rows.length) status.textContent = 'Zatím tu nejsou žádné příspěvky.';
+    else if (!filtered.length) status.textContent = 'Zvoleným filtrům neodpovídá žádná inspirace.';
 
-    const sorted = [...rows].sort((a, b) =>
+    const sorted = filtered.sort((a, b) =>
       b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id)
     );
     cards.innerHTML = sorted.map(idea => {
       const url = safeUrl(idea.url);
-      const author = idea.author_id ? person(idea.author_id) : 'Bývalý člen týmu';
+      const author = authorName(idea.author_id);
       const title = esc(idea.title);
       const heading = url
         ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${title}</a>`
@@ -127,6 +148,7 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
       return `<article class="card idea-card">
         <h3>${heading}</h3>
         <p class="card-format">${esc(idea.format)}</p>
+        ${idea.event_date ? `<time class="meta-item idea-date" datetime="${esc(idea.event_date)}">${calendarIcon}<span>${esc(date(idea.event_date))}</span></time>` : ''}
         <div class="idea-description">${renderDescription(idea.description)}</div>
         <div class="cardfoot"><div class="person">${userIcon}<span>${esc(author)}</span>
           <div class="cardactions">
@@ -181,6 +203,7 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
       editingId = null;
       deletingId = null;
       form.reset();
+      formatFilter.value = authorFilter.value = '';
       description.replaceChildren();
       descriptionRange = null;
       $('deleteIdeaName').textContent = '';
@@ -201,6 +224,7 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
     $('ideaEditorTitle').textContent = idea ? 'Upravit příspěvek' : 'Přidat inspiraci';
     if (idea) {
       for (const field of ['title', 'format', 'url']) form.elements[field].value = idea[field];
+      form.elements.event_date.value = idea.event_date ?? '';
     }
     editor.showModal();
   }
@@ -221,6 +245,7 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
     });
   }
 
+  formatFilter.onchange = authorFilter.onchange = render;
   retry.onclick = () => { if (account && !busy) void load(); };
   add.onclick = () => openEditor();
   cards.addEventListener('click', event => {
@@ -244,6 +269,7 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
     const id = editingId;
     const data = new FormData(form);
     const payload = Object.fromEntries(['title', 'format', 'url'].map(field => [field, data.get(field).trim()]));
+    payload.event_date = data.get('event_date') || null;
     const error = $('ideaError');
     const plainDescription = description.innerText.trim();
     if (!payload.title || !plainDescription || (payload.url && !safeUrl(payload.url))) {

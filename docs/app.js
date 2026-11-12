@@ -1,4 +1,4 @@
-import {createIdeasBoard} from './ideas.js?v=20261111-idea-formatting';
+import {createIdeasBoard} from './ideas.js?v=20261112-idea-board';
 import {createAttachmentController} from './attachments.js?v=20261106-attachments1';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -401,12 +401,14 @@ async function init(){
 const ideas = createIdeasBoard({
   getAccount: () => !recoveryMode && user && (demo || approvedTeamAccount === user.id) ? user.id : null,
   getDb: () => db,
-  loadRows: () => allRows('dvpp_ideas', 'id, author_id, title, format, description, url, created_at', 'id'),
+  loadRows: () => allRows('dvpp_ideas', 'id, author_id, title, format, description, url, event_date, created_at', 'id'),
   demo,
   esc,
   safeUrl,
   person,
   userIcon,
+  calendarIcon,
+  date,
   toast,
   richPrefix,
   cleanRichHtml: cleanReflectionHtml,

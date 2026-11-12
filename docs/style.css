@@ -482,8 +482,8 @@ body:not(.signed-out) {
   color: #123c70;
 }
 
-.sectionhead .tab[data-tab="ideas"]:hover {
-  background: #c5ddfc;
+.sectionhead .tab[data-tab="ideas"]:is(:hover, :focus-visible) {
+  background: #edf5ff;
 }
 
 #addIdea {
@@ -499,6 +499,32 @@ body:not(.signed-out) {
 
 #ideas {
   padding-top: 20px;
+}
+
+.idea-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.idea-filters label {
+  flex: 0 1 220px;
+  min-width: 0;
+}
+
+.idea-filters select {
+  width: 100%;
+  min-height: 43px;
+  border-color: #333;
+  border-radius: 0;
+  font-weight: 400;
+}
+
+.idea-card .idea-date {
+  margin: -5px 0 12px;
+  color: var(--green);
+  font-size: 13px;
 }
 
 #ideasStatus:empty {
