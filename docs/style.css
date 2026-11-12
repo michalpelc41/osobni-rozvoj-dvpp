@@ -117,7 +117,7 @@ header .account #identity{color:#307e72}
 .card h3,.card h3 button,.timeline-content h3,.timeline-content h3 button,.tablewrap td button[data-detail],#detailContent h2{color:#000}
 .tablewrap td button[data-detail] b{font-weight:600}
 .tab.active,.views button,.views .selected{color:#000}
-.filters input, .filters select { font-size: 14px; font-weight: 400; }
+.filters input, .filters select, .idea-filters select { font-size: 14px; font-weight: 400; }
 .cardtop{justify-content:flex-start}
 .cardtop>span.tag{color:inherit}
 .cardtop>span.tag.planned{color:#496783}
@@ -299,12 +299,12 @@ header .account #identity { color: var(--ink); }
 }
 .sectionhead .tab[data-tab="stats"] { width: auto; }
 .sectionhead .tab.active { color: var(--green); background: var(--pale); }
-.filters input, .filters select, #authForm input {
+.filters input, .filters select, .idea-filters select, #authForm input {
   border: 1px solid #333;
   border-radius: 0;
   min-height: 43px;
 }
-.filters label { font-size: 14.95px; color: #000; }
+.filters label, .idea-filters label { font-size: 14.95px; color: #000; }
 #authForm label { font-size: 13px; }
 #addButton, .primary {
   border-radius: 0;
@@ -454,7 +454,7 @@ body:not(.signed-out) {
   background-color: #fff;
 }
 
-.filters select:has(option:checked:not([value=""], [selected])) {
+:is(.filters, .idea-filters) select:has(option:checked:not([value=""], [selected])) {
   background-color: #e2efe7;
   color: #175538;
 }
@@ -490,6 +490,7 @@ body:not(.signed-out) {
   border-radius: 0;
   background: #245fa8;
   border-color: #245fa8;
+  font-weight: 500;
 }
 
 #addIdea:hover {
@@ -511,14 +512,6 @@ body:not(.signed-out) {
 .idea-filters label {
   flex: 0 1 220px;
   min-width: 0;
-}
-
-.idea-filters select {
-  width: 100%;
-  min-height: 43px;
-  border-color: #333;
-  border-radius: 0;
-  font-weight: 400;
 }
 
 .idea-card .idea-date {
