@@ -1,6 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.57.4';
-import {allowedUrl, knownTitle, sourceDescription, sources, titleKey, urlKey} from './sources.mjs';
+import {allowedUrl, isTimely, knownTitle, relevance, sourceDescription, sources, summarize, titleKey, urlKey} from './sources.mjs';
+
+const maxSuggestions = 10;
+const selectionVersion = 'dvpp-expanded';
 
 const dateInPrague = (date: Date) => new Intl.DateTimeFormat('sv-SE', {timeZone: 'Europe/Prague'}).format(date);
 
@@ -100,11 +103,18 @@ async function generateReport(db: ReturnType<typeof createClient>, today: string
     const catalogs = await Promise.all(sources.map(async source => {
       try {
         const {html} = await fetchPage(source.url);
-        const entries = source.read(html);
+        const pageUrls = source.pages?.(html) ?? [];
+        const pages = await Promise.allSettled(pageUrls.map(fetchPage));
+        if (pageUrls.length && pages.every(page => page.status === 'rejected')) {
+          throw Error('Stránky archivu nejsou dostupné.');
+        }
+        const entries = source.read(html).concat(pages.flatMap(page =>
+          page.status === 'fulfilled' ? source.read(page.value.html) : []));
         return {name: source.name, available: true, entries: entries
-          .filter(entry => entry.event_date && entry.event_date >= today &&
+          .filter(entry => isTimely(entry, today) &&
             !knownUrls.has(urlKey(entry.url)) && !knownTitle(entry.title, knownTitles))
-          .sort((a, b) => a.event_date.localeCompare(b.event_date))};
+          .sort((a, b) => relevance(b) - relevance(a) ||
+            (a.event_date ?? '9999').localeCompare(b.event_date ?? '9999'))};
       } catch (error) {
         console.warn('DVPP catalog unavailable', source.name, error instanceof Error ? error.message : '');
         return {name: source.name, available: false, entries: []};
@@ -115,25 +125,31 @@ async function generateReport(db: ReturnType<typeof createClient>, today: string
     // Round-robin between publishers, favoring a format that is not yet represented.
     const suggestions = [];
     const types = new Set();
-    for (let round = 0; round < 5 && suggestions.length < 5; round++) {
+    const groups = new Set();
+    for (let round = 0; round < 4 && suggestions.length < maxSuggestions; round++) {
       const picks = await Promise.all(catalogs.map(async catalog => {
-        const index = catalog.entries.findIndex(entry => !types.has(entry.type));
+        const newGroup = catalog.entries.findIndex(entry => !groups.has(entry.group));
+        const index = newGroup >= 0 ? newGroup : catalog.entries.findIndex(entry => !types.has(entry.type));
         const [entry] = catalog.entries.splice(Math.max(index, 0), 1);
         if (!entry || knownUrls.has(urlKey(entry.url)) || knownTitle(entry.title, knownTitles)) return null;
         const page = await fetchPage(entry.url).catch(() => null);
         if (!page || knownUrls.has(urlKey(page.url))) return null;
-        const description = entry.description || sourceDescription(page.html, page.url);
-        if (description.length < 40) return null;
+        const detail = sourceDescription(page.html, page.url);
+        const description = summarize(entry, entry.group === 'Novinky' || entry.group === 'Metodika'
+          ? detail || entry.description : entry.description || detail) || summarize(entry, entry.description || detail);
+        if (!description) return null;
         return {entry, publisher: catalog.name, source: page.url, description};
       }));
       for (const pick of picks) {
-        if (!pick || suggestions.length >= 5) continue;
+        if (!pick || suggestions.length >= maxSuggestions) continue;
         const {entry, publisher, source, description} = pick;
         if (knownUrls.has(urlKey(source)) || knownTitle(entry.title, knownTitles)) continue;
         suggestions.push({
-          kind: 'new', title: entry.title, source, note: publisher + ' · ' + entry.type,
+          kind: 'new', title: entry.title, source, note: publisher + ' · ' + entry.type +
+            (entry.group === 'Záznam webináře' ? ' · ' + new Intl.DateTimeFormat('cs', {timeZone: 'UTC'})
+              .format(new Date(entry.referenceDate + 'T00:00:00Z')) : ''),
           fingerprint: await digest(['new', urlKey(source)]),
-          proposed: {title: entry.title, url: source, format: entry.format, event_date: entry.event_date, description: description.slice(0, 700)},
+          proposed: {title: entry.title, url: source, format: entry.format, event_date: entry.event_date, description},
         });
         knownUrls.add(urlKey(source));
         knownTitles.add(titleKey(entry.title));
@@ -144,7 +160,7 @@ async function generateReport(db: ReturnType<typeof createClient>, today: string
     const unavailable = catalogs.filter(catalog => !catalog.available).map(catalog => catalog.name);
     const result = await db.rpc('dvpp_save_review_run', {
       p_week: week,
-      p_summary: {mode: 'external', suggested: suggestions.length, unavailable},
+      p_summary: {mode: 'external', selection: selectionVersion, suggested: suggestions.length, unavailable},
       p_items: suggestions,
     });
     if (result.error) throw result.error;
