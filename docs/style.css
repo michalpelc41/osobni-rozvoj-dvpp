@@ -187,7 +187,7 @@ header .account #identity{color:#307e72}
 .card-format,.timeline-format{color:#c26a96}
 .timeline-format{font-size:12px;margin:2px 0 8px}
 header .account{flex-direction:column;align-items:flex-end;gap:2px}
-#authButton{padding:2px 0;border:0;background:transparent;border-radius:2px;font-size:11px;font-weight:400;text-decoration:underline;text-underline-offset:3px;color:var(--green)}
+#authButton{padding:2px 0;border:0;background:transparent;border-radius:2px;font-size:12px;font-weight:400;text-decoration:underline;text-underline-offset:3px;color:var(--green)}
 #authButton:hover{color:#164f46;background:transparent}
 .filters{display:grid;grid-template-columns:minmax(200px,1.7fr) repeat(4,minmax(135px,1fr)) auto}
 .filters label{min-width:0}
@@ -325,7 +325,7 @@ body.signed-out #auth {
   border: 0;
   padding: 0;
   border-radius: 0;
-  box-shadow: var(--kcv-shadow);
+  box-shadow: 0 12px 36px #00000022;
 }
 #authForm { display: grid; grid-template-columns: minmax(0, 1fr); }
 .auth-brand {
@@ -588,6 +588,7 @@ body:not(.signed-out) {
 }
 
 .idea-description-field {
+  margin-bottom: 10px;
   font-size: 12px;
   font-weight: 600;
 }
