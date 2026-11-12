@@ -1,35 +1,15 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.57.4';
-import {allowedUrl, catalogEntries, catalogUrl, sourceFields, urlKey} from './sources.mjs';
-
-type Idea = {
-  id: string;
-  title: string;
-  description: string;
-  event_date: string | null;
-  url: string;
-};
-type Item = {
-  kind: 'change' | 'new' | 'manual';
-  idea_id?: string;
-  title: string;
-  field?: string;
-  original?: string | null;
-  proposed?: unknown;
-  source: string;
-  note: string;
-  fingerprint: string;
-};
+import {allowedUrl, knownTitle, sourceDescription, sources, titleKey, urlKey} from './sources.mjs';
 
 const dateInPrague = (date: Date) => new Intl.DateTimeFormat('sv-SE', {timeZone: 'Europe/Prague'}).format(date);
-const normalize = (value: string) => value.normalize('NFC').replace(/\s+/gu, ' ').trim().toLowerCase();
 
 async function fetchPage(source: string) {
   let url = allowedUrl(source);
   const signal = AbortSignal.timeout(8000);
   for (let redirects = 0; url && redirects <= 4; redirects++) {
     const response = await fetch(url, {
-      redirect: 'manual', signal, headers: {Accept: 'text/html, application/xhtml+xml'},
+      redirect: 'manual', signal, headers: {Accept: 'text/html, application/xhtml+xml, application/rss+xml, application/xml, text/xml'},
     });
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.get('Location');
@@ -37,9 +17,9 @@ async function fetchPage(source: string) {
       url = location ? allowedUrl(location, url) : null;
       continue;
     }
-    if (!response.ok || !/^(?:text\/html|application\/xhtml\+xml)\b/i.test(response.headers.get('Content-Type') ?? '')) {
+    if (!response.ok || !/^(?:text\/(?:html|xml)|application\/(?:xhtml\+xml|rss\+xml|xml))\b/i.test(response.headers.get('Content-Type') ?? '')) {
       await response.body?.cancel();
-      throw Error(response.ok ? 'Zdroj neposkytuje webovou stránku.' : 'Zdroj vrátil HTTP ' + response.status + '.');
+      throw Error(response.ok ? 'Zdroj neposkytuje podporovaný obsah.' : 'Zdroj vrátil HTTP ' + response.status + '.');
     }
     const reader = response.body?.getReader();
     if (!reader) throw Error('Zdroj neposkytuje obsah.');
@@ -60,14 +40,6 @@ async function fetchPage(source: string) {
     return {url: url.href, html: html + decoder.decode()};
   }
   throw Error('Odkaz nebo jeho přesměrování vede mimo podporované zdroje.');
-}
-
-async function inBatches<T, R>(items: T[], work: (item: T) => Promise<R>) {
-  const output: R[] = [];
-  for (let i = 0; i < items.length; i += 6) {
-    output.push(...await Promise.all(items.slice(i, i + 6).map(work)));
-  }
-  return output;
 }
 
 async function digest(value: unknown) {
@@ -106,103 +78,74 @@ function logError(error: unknown) {
 
 async function generateReport(db: ReturnType<typeof createClient>, today: string, week: string) {
   try {
-    const ideas: Idea[] = [];
-    for (let offset = 0; ; offset += 500) {
-      const {data, error} = await db.from('dvpp_ideas').select('id,title,description,event_date,url')
-        .order('id').range(offset, offset + 499);
-      if (error) throw error;
-      ideas.push(...data);
-      if (data.length < 500) break;
+    const knownUrls = new Set<string>();
+    const knownTitles = new Set<string>();
+    for (const table of ['dvpp_ideas', 'dvpp_idea_review_items']) {
+      const previous = table === 'dvpp_idea_review_items';
+      for (let offset = 0; ; offset += 500) {
+        let query = db.from(table).select(previous ? 'title,source' : 'title,url');
+        if (previous) query = query.eq('kind', 'new');
+        const {data, error} = await query.order('id').range(offset, offset + 499);
+        if (error) throw error;
+        for (const row of data as unknown as {title: string; source?: string; url?: string}[]) {
+          const url = row.source ?? row.url ?? '';
+          if (previous && !allowedUrl(url)) continue;
+          knownUrls.add(urlKey(url));
+          knownTitles.add(titleKey(row.title));
+        }
+        if (data.length < 500) break;
+      }
     }
 
-    let catalogWarning = '';
-    const catalog = await fetchPage(catalogUrl).then(({html}) => {
-      const entries = catalogEntries(html);
-      if (!entries.length) catalogWarning = 'Katalog KCV neposkytl rozpoznatelné programy s termíny.';
-      return entries;
-    }).catch(() => {
-      catalogWarning = 'Katalog KCV se nepodařilo načíst.';
-      return [] as ReturnType<typeof catalogEntries>;
-    });
-    const catalogByUrl = new Map(catalog.map(entry => [urlKey(entry.url), entry]));
-    let reachable = 0;
-    const checked = await inBatches(ideas, async idea => {
-      const base = {idea_id: idea.id, title: idea.title, source: idea.url};
-      const manual = async (note: string): Promise<Item> => ({
-        ...base, kind: 'manual', note, fingerprint: await digest(['manual', idea.id, idea.url, note]),
-      });
-      if (!idea.url) return [await manual('Karta nemá zdrojový odkaz.')];
-      if (!allowedUrl(idea.url)) return [await manual('Odkaz je mimo podporované zdroje nebo nepoužívá HTTPS.')];
-      let page;
-      try { page = await fetchPage(idea.url); }
-      catch (error) {
-        const note = error instanceof Error && !['TimeoutError', 'AbortError', 'TypeError'].includes(error.name)
-          ? error.message : 'Zdroj je dočasně nedostupný.';
-        return [await manual(note)];
+    const catalogs = await Promise.all(sources.map(async source => {
+      try {
+        const {html} = await fetchPage(source.url);
+        const entries = source.read(html);
+        return {name: source.name, available: true, entries: entries
+          .filter(entry => entry.event_date && entry.event_date >= today &&
+            !knownUrls.has(urlKey(entry.url)) && !knownTitle(entry.title, knownTitles))
+          .sort((a, b) => a.event_date.localeCompare(b.event_date))};
+      } catch (error) {
+        console.warn('DVPP catalog unavailable', source.name, error instanceof Error ? error.message : '');
+        return {name: source.name, available: false, entries: []};
       }
-      reachable++;
-      const fields = sourceFields(page.html, page.url);
-      const eventDate = fields.event_date ?? catalogByUrl.get(urlKey(page.url))?.event_date ?? null;
-      const items: Item[] = [];
-      if (fields.ambiguous) {
-        items.push(await manual('Zdroj uvádí více akcí, změnu stavu nebo přesun termínu. Ověřte ho ručně.'));
-      } else {
-        if (!fields.title || !fields.description || (!eventDate && idea.event_date)) {
-          items.push(await manual('Na zdroji chybí čitelný název, popis nebo jednoznačný termín uvedený na kartě.'));
-        }
-        const candidates = {title: fields.title, description: fields.description, event_date: eventDate};
-        for (const [field, value] of Object.entries(candidates)) {
-          if (!value) continue;
-          const original = idea[field as keyof typeof candidates];
-          if (normalize(value) === normalize(original ?? '')) continue;
-          items.push({...base, kind: 'change', field, original, proposed: value, note: '',
-            fingerprint: await digest([idea.id, idea.url, field, original, value])});
-        }
-      }
-      if (urlKey(idea.url) !== urlKey(page.url)) {
-        items.push({...base, kind: 'change', field: 'url', original: idea.url, proposed: page.url,
-          note: 'Zdroj přesměrovává na tuto adresu.', fingerprint: await digest([idea.id, idea.url, 'url', page.url])});
-      }
-      return items;
-    });
+    }));
+    if (catalogs.every(catalog => !catalog.available)) throw Error('Žádný katalog není dostupný.');
 
-    const knownUrls = new Set(ideas.map(idea => urlKey(idea.url)).filter(Boolean));
-    const knownTitles = new Set(ideas.map(idea => normalize(idea.title)));
-    const topics = [
-      [/digitál|informatik|uměl[áéou] inteligenc|\bAI\b/i, 'Digitální kompetence a využití technologií ve vzdělávání.'],
-      [/profesní rozvoj|vedení|mentor|kouč|metodik|lídr/i, 'Vedení škol, metodická podpora nebo profesní rozvoj pedagogů.'],
-      [/pedagog|výuk|učitel|učení|vzděláv|škol/i, 'Metody výuky a podpora pedagogů nebo škol.'],
-    ] as const;
-    const candidates = catalog.filter(entry => entry.event_date >= today && !knownUrls.has(urlKey(entry.url)) &&
-      !knownTitles.has(normalize(entry.title))).map(entry => ({
-        entry, rank: topics.findIndex(([pattern]) => pattern.test(entry.title)),
-      })).filter(({rank}) => rank >= 0)
-      .sort((a, b) => a.rank - b.rank || a.entry.event_date.localeCompare(b.entry.event_date));
-
-    const suggestions: Item[] = [];
-    for (let i = 0; i < candidates.length && suggestions.length < 5; i += 5) {
-      const group = await inBatches(candidates.slice(i, i + 5), async ({entry, rank}) => {
-        const fingerprint = await digest(['new', urlKey(entry.url)]);
-        const previous = await db.from('dvpp_idea_review_items').select('id').eq('fingerprint', fingerprint).maybeSingle();
-        if (previous.error) throw previous.error;
-        if (previous.data) return null;
+    // Round-robin between publishers, favoring a format that is not yet represented.
+    const suggestions = [];
+    const types = new Set();
+    for (let round = 0; round < 5 && suggestions.length < 5; round++) {
+      const picks = await Promise.all(catalogs.map(async catalog => {
+        const index = catalog.entries.findIndex(entry => !types.has(entry.type));
+        const [entry] = catalog.entries.splice(Math.max(index, 0), 1);
+        if (!entry || knownUrls.has(urlKey(entry.url)) || knownTitle(entry.title, knownTitles)) return null;
         const page = await fetchPage(entry.url).catch(() => null);
-        if (!page) return null;
-        const fields = sourceFields(page.html, page.url);
-        if (fields.ambiguous || !fields.description) return null;
-        return {kind: 'new' as const, title: entry.title, source: entry.url, fingerprint,
-          proposed: {...entry, description: fields.description}, note: topics[rank][1]};
-      });
-      for (const item of group) {
-        if (!item || suggestions.length >= 5 || knownTitles.has(normalize(item.title))) continue;
-        suggestions.push(item);
-        knownTitles.add(normalize(item.title));
+        if (!page || knownUrls.has(urlKey(page.url))) return null;
+        const description = entry.description || sourceDescription(page.html, page.url);
+        if (description.length < 40) return null;
+        return {entry, publisher: catalog.name, source: page.url, description};
+      }));
+      for (const pick of picks) {
+        if (!pick || suggestions.length >= 5) continue;
+        const {entry, publisher, source, description} = pick;
+        if (knownUrls.has(urlKey(source)) || knownTitle(entry.title, knownTitles)) continue;
+        suggestions.push({
+          kind: 'new', title: entry.title, source, note: publisher + ' · ' + entry.type,
+          fingerprint: await digest(['new', urlKey(source)]),
+          proposed: {title: entry.title, url: source, format: entry.format, event_date: entry.event_date, description: description.slice(0, 700)},
+        });
+        knownUrls.add(urlKey(source));
+        knownTitles.add(titleKey(entry.title));
+        types.add(entry.type);
       }
     }
 
+    const unavailable = catalogs.filter(catalog => !catalog.available).map(catalog => catalog.name);
     const result = await db.rpc('dvpp_save_review_run', {
-      p_week: week, p_summary: {checked: ideas.length, reachable, suggested: suggestions.length, catalogWarning},
-      p_items: [...checked.flat(), ...suggestions],
+      p_week: week,
+      p_summary: {mode: 'external', suggested: suggestions.length, unavailable},
+      p_items: suggestions,
     });
     if (result.error) throw result.error;
   } catch (error) {

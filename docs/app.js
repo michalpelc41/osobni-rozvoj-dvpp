@@ -1,4 +1,4 @@
-import {createIdeaReview} from './idea-review.js?v=20261112-idea-review';
+import {createIdeaReview} from './idea-review.js?v=20261112-external-ideas';
 import {createIdeasBoard} from './ideas.js?v=20261112-csv-inspiration';
 import {createAttachmentController} from './attachments.js?v=20261106-attachments1';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -456,5 +456,5 @@ const ideas = createIdeasBoard({
   cleanRichHtml: cleanReflectionHtml,
 });
 const getReviewAccount = () => !demo && user?.email?.toLowerCase() === 'pelc@kcv.cz' ? getIdeasAccount() : null;
-const review = createIdeaReview({getAccount: getReviewAccount, getDb: () => db, esc, safeUrl, date, toast, richPrefix, reflectionPlainText});
+const review = createIdeaReview({getAccount: getReviewAccount, getDb: () => db, esc, safeUrl, date, toast});
 init();

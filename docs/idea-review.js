@@ -1,7 +1,6 @@
-const fieldLabels = {title: 'Název', description: 'Popis', event_date: 'Termín konání', url: 'Odkaz'};
 const timestamp = new Intl.DateTimeFormat('cs-CZ', {dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Prague'});
 
-export function createIdeaReview({getAccount, getDb, esc, safeUrl, date, toast, richPrefix, reflectionPlainText}) {
+export function createIdeaReview({getAccount, getDb, esc, safeUrl, date, toast}) {
   const byId = id => document.getElementById(id);
   const section = byId('ideaReview');
   const button = byId('reviewTab');
@@ -22,23 +21,11 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, date, toast, 
     badge.setAttribute('aria-label', count + ' položek k vyřízení');
   }
 
-  function valueText(item, value) {
-    if (value == null || value === '') return 'Nevyplněno';
-    if (item.field === 'event_date') return date(value);
-    if (item.field === 'description' && value.startsWith(richPrefix)) return reflectionPlainText(value);
-    return value;
-  }
-
   function renderItem(item) {
     const url = safeUrl(item.source);
     const source = url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Otevřít zdroj ↗</a>` : 'Bez zdrojového odkazu';
-    const details = item.kind === 'change' ? `
-      <dl class="review-compare">
-        <div><dt>Na nástěnce</dt><dd>${esc(valueText(item, item.original))}</dd></div>
-        <div><dt>Návrh ze zdroje</dt><dd>${esc(valueText(item, item.proposed))}</dd></div>
-      </dl>` : '';
-    const draft = item.kind === 'new' ? item.proposed : null;
-    const edit = draft ? `<details class="review-draft">
+    const draft = item.proposed;
+    const edit = `<details class="review-draft">
       <summary>Zobrazit a upravit návrh</summary>
       <label>Název<input name="title" value="${esc(draft.title)}" maxlength="200" required></label>
       <div class="formgrid">
@@ -48,51 +35,45 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, date, toast, 
       </div>
       <label>Popis<textarea name="description" rows="4" maxlength="10000" required>${esc(draft.description)}</textarea></label>
       <label>Odkaz<input name="url" type="url" value="${esc(draft.url)}" maxlength="2000" required></label>
-    </details>` : '';
+    </details>`;
     return `<article class="panel review-item">
-      <form data-review-id="${esc(item.id)}" data-review-kind="${esc(item.kind)}" novalidate>
-        ${item.kind === 'change' ? `<p class="review-field">${esc(fieldLabels[item.field])}</p>` : ''}
+      <form data-review-id="${esc(item.id)}" novalidate>
         <h4>${esc(item.title)}</h4>
         <p class="review-meta">${source} <span>· ${timestamp.format(new Date(item.checked_at))}</span></p>
         ${item.note ? `<p>${esc(item.note)}</p>` : ''}
-        ${draft ? `<p>${esc(draft.format)}${draft.event_date ? ' · ' + esc(date(draft.event_date)) : ''}</p><p>${esc(draft.description)}</p>` : ''}
-        ${details}${edit}
+        ${draft.event_date ? `<p>Termín konání · ${esc(date(draft.event_date))}</p>` : ''}
+        <p>${esc(draft.description)}</p>
+        ${edit}
         <p class="review-feedback" role="status" hidden></p>
         <div class="actions">
-          <button type="submit" class="quiet" value="reject">${item.kind === 'manual' ? 'Označit jako vyřízené' : 'Zamítnout'}</button>
-          ${item.kind === 'manual' ? '' : `<button type="submit" class="primary" value="approve">${draft ? 'Schválit a zveřejnit' : 'Schválit změnu'}</button>`}
+          <button type="submit" class="quiet" value="reject">Zamítnout</button>
+          <button type="submit" class="primary" value="approve">Schválit a zveřejnit</button>
         </div>
       </form>
     </article>`;
   }
 
   function renderItems(items) {
-    list.innerHTML = [
-      ['change', 'Změny na stávajících kartách'],
-      ['manual', 'K ručnímu ověření'],
-      ['new', 'Nové inspirace'],
-    ].map(([kind, heading]) => {
-      const subset = items.filter(item => item.kind === kind);
-      if (!subset.length) return '';
-      const rows = subset.map(renderItem);
-      return `<section class="review-group"><h3>${heading}</h3><div>${rows.join('')}</div></section>`;
-    }).join('');
-    if (!items.length) list.textContent = 'Všechny položky jsou vyřízené.';
+    if (!items.length) {
+      list.textContent = 'Žádné nové návrhy ke schválení.';
+      return;
+    }
+    list.innerHTML = `<section class="review-group" aria-label="Návrhy ke schválení"><div>${items.map(renderItem).join('')}</div></section>`;
   }
 
   async function refresh() {
     const current = ++revision;
-    if (visible) summary.textContent = 'Načítání kontroly…';
+    if (visible) summary.textContent = 'Načítání návrhů…';
     reload.disabled = true;
     try {
       const db = getDb();
       const requests = [
-        db.from('dvpp_idea_review_items').select('id', {count: 'exact', head: true}).eq('decision', 'pending'),
+        db.from('dvpp_idea_review_items').select('id', {count: 'exact', head: true}).eq('kind', 'new').eq('decision', 'pending'),
       ];
       if (visible) requests.push(
-        db.from('dvpp_idea_review_runs').select('checked_at,summary').order('week', {ascending: false}).limit(1).maybeSingle(),
-        db.from('dvpp_idea_review_items').select('id,kind,title,field,original,proposed,source,note,checked_at')
-          .eq('decision', 'pending').order('checked_at', {ascending: false}).order('id').limit(100),
+        db.from('dvpp_idea_review_runs').select('checked_at,summary').eq('summary->>mode', 'external').order('week', {ascending: false}).limit(1).maybeSingle(),
+        db.from('dvpp_idea_review_items').select('id,title,proposed,source,note,checked_at')
+          .eq('kind', 'new').eq('decision', 'pending').order('checked_at', {ascending: false}).order('id').limit(100),
       );
       const [count, run, items] = await Promise.all(requests);
       if (current !== revision || !allowed) return;
@@ -102,9 +83,9 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, date, toast, 
         const last = run.data;
         const result = last?.summary;
         summary.textContent = last
-          ? `Poslední kontrola ${timestamp.format(new Date(last.checked_at))} · Dostupné zdroje ${result.reachable} z ${result.checked} karet · Nové tipy ${result.suggested}.`
-            + (result.catalogWarning ? ' ' + result.catalogWarning : '') + (pending > 100 ? ' Zobrazeno 100 nejnovějších položek.' : '')
-          : 'První týdenní kontrola zatím neproběhla.';
+          ? `Poslední hledání ${timestamp.format(new Date(last.checked_at))} · Nové tipy ${result.suggested}.`
+            + (result.unavailable?.length ? ' Nedostupné zdroje · ' + result.unavailable.join(', ') + '.' : '') + (pending > 100 ? ' Zobrazeno 100 nejnovějších položek.' : '')
+          : 'První týdenní hledání zatím neproběhlo.';
         renderItems(items.data);
       }
     } catch {
@@ -126,7 +107,7 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, date, toast, 
     event.preventDefault();
     if (!allowed || !visible || !event.submitter) return;
     const approve = event.submitter.value === 'approve';
-    const edits = approve && form.dataset.reviewKind === 'new' ? Object.fromEntries(new FormData(form)) : null;
+    const edits = approve ? Object.fromEntries(new FormData(form)) : null;
     const feedback = form.querySelector('.review-feedback');
     const displayError = message => {
       feedback.hidden = false;
@@ -146,8 +127,8 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, date, toast, 
       });
       if (owner !== account) return;
       if (result.error) throw result.error;
-      if (result.data === 'conflict') {
-        displayError('Karta se mezitím změnila nebo byla smazána. Návrh můžete zamítnout.');
+      if (result.data === 'invalid') {
+        displayError('Zadejte platný odkaz mimo web kcv.cz.');
         return;
       }
       if (result.data === 'duplicate') {
@@ -161,8 +142,8 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, date, toast, 
       setCount(Math.max(0, pending - 1));
       if (!list.children.length && pending) void refresh();
       else if (!list.children.length) renderItems([]);
-      if (result.data === 'approved') toast(edits ? 'Inspirace byla zveřejněna.' : 'Změna byla uložena.');
-      else if (result.data === 'rejected') toast('Položka byla vyřízena.');
+      if (result.data === 'approved') toast('Inspirace byla zveřejněna.');
+      else if (result.data === 'rejected') toast('Návrh byl zamítnut.');
       else toast('Položka už byla vyřízena.');
     } catch {
       if (owner === account) displayError('Rozhodnutí se nepodařilo uložit.');

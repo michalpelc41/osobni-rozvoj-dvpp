@@ -1,11 +1,18 @@
-export const catalogUrl = 'https://www.kcv.cz/dvpp/vzdelavaci-programy/';
-export const formats = ['Konference', 'Přednáška', 'Seminář', 'Workshop', 'Metodické setkání', 'On-line zdroj', 'E-learning', 'Publikace'];
-const hosts = new Set([
-  'kcv.cz', 'www.kcv.cz', 'edu.gov.cz', 'www.edu.gov.cz', 'msmt.gov.cz', 'www.msmt.gov.cz',
-  'digitalizace.rvp.cz', 'vzdelavame.aidetem.cz', 'educaweek.cz', 'www.educaweek.cz',
-  'nakopnetesvojiskolu.cz', 'www.nakopnetesvojiskolu.cz', 'ucitel-in.cz', 'www.ucitel-in.cz',
-  'zsheureka.cz', 'www.zsheureka.cz', 'npi.cz', 'www.npi.cz',
-]);
+const npiUrl = 'https://mojeedu.npi.cz/cela-nabidka?orderby_sec=rdate';
+const ministryUrl = 'https://edu.gov.cz/feed/';
+const aiUrl = 'https://vzdelavame.aidetem.cz/akce/';
+const hosts = new Set([new URL(npiUrl).hostname, new URL(ministryUrl).hostname, 'www.edu.gov.cz', new URL(aiUrl).hostname]);
+const czechMonths = ['ledna', 'února', 'března', 'dubna', 'května', 'června', 'července', 'srpna', 'září', 'října', 'listopadu', 'prosince'];
+const monthPattern = czechMonths.join('|');
+const eventTypes = [
+  [/konferenc|festival|summit/i, 'Konference', 'Konference'],
+  [/webinář/i, 'Webinář', 'On-line zdroj'],
+  [/workshop/i, 'Workshop', 'Workshop'],
+  [/e-learning|samostudi/i, 'E-learning', 'E-learning'],
+  [/kurz|vzdělávací program/i, 'Kurz', 'Seminář'],
+  [/seminář/i, 'Seminář', 'Seminář'],
+  [/přednášk/i, 'Přednáška', 'Přednáška'],
+];
 
 export function allowedUrl(value, base) {
   try {
@@ -36,62 +43,85 @@ function plain(value) {
   }).replace(/\s+/gu, ' ').trim();
 }
 
-function isoDate(value) {
-  const input = String(value ?? '').trim();
-  const iso = /^(\d{4})-(\d{2})-(\d{2})(?:T|$)/.exec(input);
-  const czech = /^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})(?=\s|$)/.exec(input);
-  const date = iso ? iso[0].slice(0, 10) : czech && [czech[3], czech[2].padStart(2, '0'), czech[1].padStart(2, '0')].join('-');
-  if (!date) return null;
-  const parsed = new Date(date + 'T00:00:00Z');
-  return Number.isFinite(+parsed) && parsed.toISOString().slice(0, 10) === date ? date : null;
+function eventDate(value) {
+  const numeric = /^(\d{1,2})\.\s*(\d{1,2})\.\s*(?:[–—-]\s*\d{1,2}\.\s*\d{1,2}\.\s*)?(\d{4})\b/.exec(value);
+  const named = new RegExp('^(\\d{1,2})\\.\\s*(' + monthPattern + ')\\s+(\\d{4})\\b', 'i').exec(value);
+  if (!numeric && !named) return null;
+  const [day, month, year] = numeric ? numeric.slice(1) : [named[1], czechMonths.indexOf(named[2].toLowerCase()) + 1, named[3]];
+  const iso = [year, String(month).padStart(2, '0'), day.padStart(2, '0')].join('-');
+  const date = new Date(iso + 'T00:00:00Z');
+  return Number.isFinite(+date) && date.toISOString().slice(0, 10) === iso ? iso : null;
 }
 
-export function catalogEntries(html) {
-  const entries = new Map();
-  for (const card of html.split(/<div\b[^>]*\bdata-elementor-type=["']loop-item["'][^>]*>/i).slice(1)) {
-    const match = /<a\b[^>]*\bhref=["']([^"']+\/dvpp\/program\/[^"']+)["']/i.exec(card);
-    const url = match && allowedUrl(match[1], catalogUrl);
-    const title = plain(card.match(/<h5\b[^>]*>([\s\S]*?)<\/h5>/i)?.[1]);
-    const rawFormat = plain(card.match(/<span\b[^>]*class=["']forma_akce_vypis[^"']*["'][^>]*>([\s\S]*?)<\/span>/i)?.[1]);
-    const format = formats.includes(rawFormat) ? rawFormat : ({Webinář: 'On-line zdroj', Kurz: 'Seminář'})[rawFormat];
-    const event_date = isoDate(plain(card.match(/fa-calendar-alt[^>]*><\/i>\s*<\/span>\s*<span[^>]*>([^<]+)/i)?.[1]));
-    if (url && title && format && event_date) entries.set(urlKey(url.href), {url: url.href, title, format, event_date});
-  }
-  return [...entries.values()];
+function entry(base, link, heading, rawType, rawDate, description = '') {
+  const url = allowedUrl(plain(link), base);
+  const title = plain(heading);
+  const type = eventTypes.find(([pattern]) => pattern.test(rawType));
+  if (!url || !title || title.length > 200 || !type) return null;
+  return {url: url.href, title, type: type[1], format: type[2], event_date: eventDate(rawDate), description};
 }
 
-export function sourceFields(html, source) {
-  const nodes = [];
-  function collect(node) {
-    if (Array.isArray(node)) node.forEach(collect);
-    else if (node && typeof node === 'object') {
-      nodes.push(node);
-      if (node['@graph']) collect(node['@graph']);
-    }
+function npiEntries(html) {
+  return [...html.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/gi)].map(([, card]) => {
+    const link = card.match(/href="(\/produkt\/[^"]+)"/)?.[1];
+    const title = card.match(/<span class="sr-only">([^<]+)/)?.[1];
+    const type = card.match(/class="text-nadpisek[^"]*">([^<]+)/)?.[1];
+    const date = plain(card.match(/<li\b[^>]*>([\s\S]*?)<\/li>/i)?.[1]);
+    return link && entry(npiUrl, link, title, type, date);
+  }).filter(Boolean);
+}
+
+function ministryEntries(xml) {
+  return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)].map(([, item]) => {
+    const read = tag => item.match(new RegExp('<' + tag + '>([\\s\\S]*?)</' + tag + '>', 'i'))?.[1]
+      ?.trim().replace(/^<!\[CDATA\[([\s\S]*)\]\]>$/, '$1') ?? '';
+    const title = read('title');
+    const content = plain(read('content:encoded'));
+    // Use dates stated as event dates, not publication dates or registration deadlines.
+    const dates = [...content.matchAll(/(?:se koná|se uskuteční|se bude konat|proběhne|termín konání\s*:)[^.!?\d]{0,70}(\d{1,2}\.\s*(?:\d{1,2}\.\s*|[a-zá-ž]+\s+)\d{4})/gi)]
+      .map(match => match[1]);
+    const distinctDates = new Set(dates.map(eventDate).filter(Boolean));
+    return distinctDates.size === 1 && entry(ministryUrl, read('link'), title, plain(title), dates[0], plain(read('description')));
+  }).filter(Boolean);
+}
+
+function aiEntries(html) {
+  return [...html.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*class="product-card\b[^"]*"[^>]*>([\s\S]*?)<\/a>/gi)].map(([, link, card]) => {
+    const title = plain(card.match(/<h3\b[^>]*>([\s\S]*?)<\/h3>/i)?.[1]);
+    const date = plain(card.match(/class="product-card__date">([^<]+)/i)?.[1]);
+    const audience = /class="tags__item">Pro dospělé</.test(card);
+    if (!audience) return null;
+    const type = /AI svačinka|AI jednohubky/i.test(title) || link.includes('/webinare/') ? 'Webinář' : title + ' ' + link;
+    return entry(aiUrl, link, title, type, date);
+  }).filter(Boolean);
+}
+
+export const sources = [
+  {name: 'MŠMT / Edu.cz', url: ministryUrl, read: ministryEntries},
+  {name: 'NPI / MojeEdu', url: npiUrl, read: npiEntries},
+  {name: 'AI dětem', url: aiUrl, read: aiEntries},
+];
+
+export function sourceDescription(html, source) {
+  if (new URL(source).hostname === 'mojeedu.npi.cz') {
+    const body = html.match(/<div class="prose max-w-none">([\s\S]*?)<\/div>/i)?.[1];
+    if (body) return plain(body);
   }
-  for (const match of html.matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
-    try { collect(JSON.parse(match[1])); } catch { /* invalid source metadata */ }
+  for (const match of html.matchAll(/<meta\b[^>]*>/gi)) {
+    const attrs = Object.fromEntries([...match[0].matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)]
+      .map(([, key, double, single]) => [key.toLowerCase(), double ?? single]));
+    if (['og:description', 'description'].includes(attrs.property ?? attrs.name) && attrs.content) return plain(attrs.content);
   }
-  const types = node => [node['@type']].flat().map(x => String(x).split('/').pop());
-  const events = nodes.filter(n => types(n).some(type => /Event$/.test(type)) && n.name);
-  if (events.length > 1) return {ambiguous: true};
-  const event = events[0];
-  const article = nodes.find(n => types(n).some(type => /(?:Article|BlogPosting)$/.test(type)));
-  const head = html.split(/<\/head>/i, 1)[0];
-  function meta(name) {
-    for (const match of head.matchAll(/<meta\b[^>]*>/gi)) {
-      const attrs = Object.fromEntries([...match[0].matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)]
-        .map(([, key, double, single]) => [key.toLowerCase(), double ?? single]));
-      if ((attrs.property ?? attrs.name) === name) return attrs.content;
-    }
-  }
-  const program = new URL(source).hostname.endsWith('kcv.cz') && new URL(source).pathname.startsWith('/dvpp/program/');
-  const title = plain(event?.name ?? article?.headline ?? meta('og:title')).replace(program ? /\s*\|\s*KCV DVPP$/i : /$^/, '');
-  const description = plain(event?.description ?? article?.description ?? meta('og:description') ?? meta('description'));
-  return {
-    title: title && title.length <= 200 ? title : null,
-    description: description.length >= 40 ? description.slice(0, 1000) : null,
-    event_date: isoDate(event?.startDate),
-    ambiguous: Boolean(event?.eventStatus && /(?:Cancelled|Postponed|Rescheduled)$/.test(event.eventStatus)),
-  };
+  return '';
+}
+
+export function titleKey(title) {
+  return title.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+export function knownTitle(title, titles) {
+  const key = titleKey(title);
+  return [...titles].some(previous => key === previous ||
+    (Math.min(key.length, previous.length) >= 20 && (key.startsWith(previous + ' ') || previous.startsWith(key + ' '))));
 }
