@@ -1,3 +1,4 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 import {allowedUrl, catalogEntries, catalogUrl, sourceFields, urlKey} from './sources.mjs';
 
@@ -91,6 +92,20 @@ Deno.serve(async (request: Request) => {
     if (auth.error) throw auth.error;
     if (!auth.data) return new Response(null, {status: 403});
 
+    EdgeRuntime.waitUntil(generateReport(db, today, week));
+    return Response.json({queued: true}, {status: 202});
+  } catch (error) {
+    logError(error);
+    return Response.json({error: 'Review failed'}, {status: 500});
+  }
+});
+
+function logError(error: unknown) {
+  console.error('DVPP review failed', error instanceof Error ? error.message : String((error as {code?: string}).code ?? 'unknown'));
+}
+
+async function generateReport(db: ReturnType<typeof createClient>, today: string, week: string) {
+  try {
     const ideas: Idea[] = [];
     for (let offset = 0; ; offset += 500) {
       const {data, error} = await db.from('dvpp_ideas').select('id,title,description,event_date,url')
@@ -190,9 +205,7 @@ Deno.serve(async (request: Request) => {
       p_items: [...checked.flat(), ...suggestions],
     });
     if (result.error) throw result.error;
-    return Response.json({added: result.data});
   } catch (error) {
-    console.error('DVPP review failed', error instanceof Error ? error.message : String((error as {code?: string}).code ?? 'unknown'));
-    return Response.json({error: 'Review failed'}, {status: 500});
+    logError(error);
   }
-});
+}
