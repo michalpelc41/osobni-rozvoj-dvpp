@@ -1,3 +1,4 @@
+import {createIdeaReview} from './idea-review.js?v=20261112-idea-review';
 import {createIdeasBoard} from './ideas.js?v=20261112-csv-inspiration';
 import {createAttachmentController} from './attachments.js?v=20261106-attachments1';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -149,7 +150,16 @@ function timelineMarkup(list){
  }
  if(!marked)html+=marker();return html+'</div>';
 }
-function render(){syncAuthView();ideas.show(tab === 'ideas');const list=filtered();const n=list.length,done=list.filter(a=>state(a)==='done').length;$('#total').textContent=n;$('#people').textContent=new Set(list.map(a=>a.user_id)).size;$('#reflections').textContent=done;$('#reflectionRate').textContent=n?Math.round(done/n*100)+' % z vybraných aktivit':'Zatím žádné aktivity';$('#cost').textContent=money(list.reduce((s,a)=>s+Number(a.cost),0));$('#resultCount').textContent=`${n} ${n===1?'aktivita':n>=2&&n<=4?'aktivity':'aktivit'}`;$('#board').hidden=tab!=='board';$('#stats').hidden=tab!=='stats';$$('[data-tab]').forEach(button => {
+function render(){
+ if(tab === 'review' && !getReviewAccount()) tab = 'board';
+ syncAuthView();
+ ideas.show(tab === 'ideas');
+ review.show(tab === 'review');
+ if(tab === 'review'){
+  $('#activityFilters').hidden=true;
+  $('#addButton').hidden=true;
+ }
+const list=filtered();const n=list.length,done=list.filter(a=>state(a)==='done').length;$('#total').textContent=n;$('#people').textContent=new Set(list.map(a=>a.user_id)).size;$('#reflections').textContent=done;$('#reflectionRate').textContent=n?Math.round(done/n*100)+' % z vybraných aktivit':'Zatím žádné aktivity';$('#cost').textContent=money(list.reduce((s,a)=>s+Number(a.cost),0));$('#resultCount').textContent=`${n} ${n===1?'aktivita':n>=2&&n<=4?'aktivity':'aktivit'}`;$('#board').hidden=tab!=='board';$('#stats').hidden=tab!=='stats';$$('[data-tab]').forEach(button => {
   const active = button.dataset.tab === tab;
   button.classList.toggle('active', active);
   button.setAttribute('aria-pressed', String(active));
@@ -445,4 +455,6 @@ const ideas = createIdeasBoard({
   richPrefix,
   cleanRichHtml: cleanReflectionHtml,
 });
+const getReviewAccount = () => !demo && user?.email?.toLowerCase() === 'pelc@kcv.cz' ? getIdeasAccount() : null;
+const review = createIdeaReview({getAccount: getReviewAccount, getDb: () => db, esc, safeUrl, date, toast, richPrefix, reflectionPlainText});
 init();
