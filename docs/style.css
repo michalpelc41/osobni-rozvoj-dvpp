@@ -117,7 +117,7 @@ header .account #identity{color:#307e72}
 .card h3,.card h3 button,.timeline-content h3,.timeline-content h3 button,.tablewrap td button[data-detail],#detailContent h2{color:#000}
 .tablewrap td button[data-detail] b{font-weight:600}
 .tab.active,.views button,.views .selected{color:#000}
-.filters input, .filters select, .idea-filters select { font-size: 14px; font-weight: 400; }
+.filters input, .filters select { font-size: 14px; font-weight: 400; }
 .cardtop{justify-content:flex-start}
 .cardtop>span.tag{color:inherit}
 .cardtop>span.tag.planned{color:#496783}
@@ -299,12 +299,12 @@ header .account #identity { color: var(--ink); }
 }
 .sectionhead .tab[data-tab="stats"] { width: auto; }
 .sectionhead .tab.active { color: var(--green); background: var(--pale); }
-.filters input, .filters select, .idea-filters select, #authForm input {
+.filters input, .filters select, #authForm input {
   border: 1px solid #333;
   border-radius: 0;
   min-height: 43px;
 }
-.filters label, .idea-filters label { font-size: 14.95px; color: #000; }
+.filters label { font-size: 14.95px; color: #000; }
 #authForm label { font-size: 13px; }
 #addButton, .primary {
   border-radius: 0;
@@ -454,7 +454,7 @@ body:not(.signed-out) {
   background-color: #fff;
 }
 
-:is(.filters, .idea-filters) select:has(option:checked:not([value=""], [selected])) {
+.filters select:has(option:checked:not([value=""], [selected])) {
   background-color: #e2efe7;
   color: #175538;
 }
@@ -474,7 +474,12 @@ body:not(.signed-out) {
 
 .sectionhead nav {
   flex-wrap: wrap;
-  row-gap: 6px;
+  gap: 6px;
+  align-self: center;
+  max-width: 100%;
+  padding: 5px;
+  border: 1px solid var(--border);
+  background: #fff;
 }
 
 .sectionhead .tab[data-tab="ideas"].active {
@@ -505,13 +510,54 @@ body:not(.signed-out) {
 .idea-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 12px 20px;
   margin-bottom: 18px;
 }
 
-.idea-filters label {
-  flex: 0 1 220px;
-  min-width: 0;
+.idea-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.idea-toggle input {
+  appearance: none;
+  display: grid;
+  align-items: center;
+  width: 34px;
+  height: 20px;
+  flex: none;
+  margin: 0;
+  padding: 2px;
+  border: 1px solid #777;
+  border-radius: 12px;
+  background: #fff;
+  cursor: inherit;
+}
+
+.idea-toggle input::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #777;
+}
+
+.idea-toggle input:checked {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.idea-toggle input:checked::before {
+  justify-self: end;
+  background: #fff;
+}
+
+.idea-toggle:has(input:disabled) {
+  opacity: .6;
+  cursor: default;
 }
 
 .idea-card .idea-date {
@@ -528,16 +574,58 @@ body:not(.signed-out) {
   margin-bottom: 12px;
 }
 
-#ideaCards {
+.idea-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 20px;
+}
+
+.idea-groups:has(> [hidden]) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.idea-group h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.idea-stack {
+  display: grid;
+  gap: 17px;
+}
+
+.idea-groups:has(> [hidden]) .idea-stack {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   align-items: start;
 }
 
-#ideaCards.idea-masonry {
-  position: relative;
+.idea-empty {
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 16px;
 }
 
-#ideaCards.idea-masonry > .idea-card {
-  position: absolute;
+.idea-card .idea-category--event {
+  color: #006b61;
+  background: #e4f4f1;
+}
+
+.idea-card .idea-category--resource {
+  color: #19477d;
+  background: #e8f1ff;
+}
+
+#ideaForm input[name="event_date"]:disabled {
+  background: #f2f3f2;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+@media (max-width: 650px) {
+  .idea-groups {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .idea-card h3 {

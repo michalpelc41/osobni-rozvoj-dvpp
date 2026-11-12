@@ -1,3 +1,10 @@
+const eventCategory = 'Vzdělávací akce';
+const resourceCategory = 'Vzdělávací zdroj';
+const eventFormats = new Set([eventCategory, 'Konference', 'Přednáška', 'Seminář', 'Workshop', 'Metodické setkání', 'Webinář']);
+const datedEventFormats = new Set(['On-line zdroj', 'E-learning']);
+const categoryOf = idea => eventFormats.has(idea.format) ||
+  (datedEventFormats.has(idea.format) && idea.event_date) ? eventCategory : resourceCategory;
+
 const storageKey = 'dvpp-demo-ideas';
 const editIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z"/><path d="m14 5 5 5"/></svg>';
 const deleteIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg>';
@@ -8,8 +15,10 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
   const status = $('ideasStatus');
   const retry = $('retryIdeas');
   const cards = $('ideaCards');
-  const formatFilter = $('ideaFormatFilter');
-  const authorFilter = $('ideaAuthorFilter');
+  const categories = [
+    {label: eventCategory, toggle: $('showIdeaEvents'), list: $('ideaEvents'), style: 'event'},
+    {label: resourceCategory, toggle: $('showIdeaResources'), list: $('ideaResources'), style: 'resource'},
+  ];
   const add = $('addIdea');
   const editor = $('ideaEditor');
   const form = $('ideaForm');
@@ -18,12 +27,6 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
   const save = $('saveIdea');
   const deleteDialog = $('deleteIdeaDialog');
   const confirmDelete = $('confirmIdeaDelete');
-
-  for (const option of $('formatFilter').options) {
-    if (!option.value) continue;
-    form.elements.format.add(option.cloneNode(true));
-    formatFilter.add(option.cloneNode(true));
-  }
 
   let account = null;
   let rows = [];
@@ -73,42 +76,6 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
   });
   description.addEventListener('drop', event => event.preventDefault());
 
-  function arrangeCards() {
-    if (!cards.clientWidth) return;
-    const style = getComputedStyle(cards);
-    const widths = style.gridTemplateColumns.split(' ').map(parseFloat);
-    const gap = parseFloat(style.columnGap);
-    const positions = [];
-    const bottoms = widths.map(() => 0);
-    let left = 0;
-    for (const width of widths) {
-      positions.push(left);
-      left += width + gap;
-    }
-
-    cards.classList.add('idea-masonry');
-    // Set the common track width before measuring wrapped text.
-    for (const card of cards.children) card.style.width = `${widths[0]}px`;
-    const heights = Array.from(cards.children, card => card.getBoundingClientRect().height);
-    Array.from(cards.children).forEach((card, index) => {
-      const shortest = Math.min(...bottoms);
-      const column = bottoms.indexOf(shortest);
-      card.style.left = `${positions[column]}px`;
-      card.style.top = `${shortest}px`;
-      bottoms[column] += heights[index] + gap;
-    });
-    cards.style.height = `${Math.max(0, Math.max(...bottoms) - gap)}px`;
-  }
-
-  let layoutFrame = 0;
-  const layoutObserver = new ResizeObserver(() => {
-    if (layoutFrame) return;
-    layoutFrame = requestAnimationFrame(() => {
-      layoutFrame = 0;
-      arrangeCards();
-    });
-  });
-
   const authorName = id => id ? person(id) : 'Bývalý člen týmu';
   const readRows = () => demo ? JSON.parse(localStorage.getItem(storageKey) || '[]') : loadRows();
   const newestFirst = (a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id);
@@ -132,53 +99,46 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
 
   function render() {
     add.disabled = !account || loading || loadError;
-    formatFilter.disabled = authorFilter.disabled = add.disabled;
     retry.hidden = !loadError;
-    const selectedAuthor = authorFilter.value;
-    if (!loading) {
-      const authors = [...new Set(rows.map(idea => idea.author_id))];
-      authors.sort((a, b) => authorName(a).localeCompare(authorName(b), 'cs'));
-      authorFilter.replaceChildren(new Option('Všichni garanti', ''),
-        ...authors.map(id => new Option(authorName(id), id ?? 'former')));
-      if (authors.some(id => (id ?? 'former') === selectedAuthor)) authorFilter.value = selectedAuthor;
-    }
-    const format = formatFilter.value;
-    const authorId = authorFilter.value;
-    const filtered = rows.filter(idea =>
-      (!format || idea.format === format) && (!authorId || (idea.author_id ?? 'former') === authorId)
-    );
+    const enabled = categories.filter(category => category.toggle.checked);
     status.textContent = '';
-    if (!account) status.textContent = 'Nápady jsou dostupné členům týmu DVPP.';
+    if (!account) status.textContent = 'Inspirace jsou dostupné členům týmu DVPP.';
     else if (loading) status.textContent = 'Načítání příspěvků…';
     else if (loadError) status.textContent = 'Příspěvky se nepodařilo načíst.';
-    else if (!rows.length) status.textContent = 'Zatím tu nejsou žádné příspěvky.';
-    else if (!filtered.length) status.textContent = 'Zvoleným filtrům neodpovídá žádná inspirace.';
+    else if (!enabled.length) status.textContent = 'Zapněte alespoň jednu kategorii.';
+    cards.hidden = Boolean(status.textContent);
 
-    const sorted = filtered.sort(newestFirst);
-    cards.innerHTML = sorted.map(idea => {
-      const url = safeUrl(idea.url);
-      const author = authorName(idea.author_id);
-      const title = esc(idea.title);
-      const heading = url
-        ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${title}</a>`
-        : title;
-      return `<article class="card idea-card">
-        <h3>${heading}</h3>
-        <p class="card-format">${esc(idea.format)}</p>
-        ${idea.event_date ? `<time class="meta-item idea-date" datetime="${esc(idea.event_date)}">${calendarIcon}<span>${esc(date(idea.event_date))}</span></time>` : ''}
-        <div class="idea-description">${renderDescription(idea.description)}</div>
-        <div class="cardfoot"><div class="person">${userIcon}<span>${esc(author)}</span>
-          <div class="cardactions">
-            <button type="button" data-edit-idea="${esc(idea.id)}" aria-label="Upravit příspěvek" title="Upravit příspěvek">${editIcon}</button>
-            <button type="button" data-delete-idea="${esc(idea.id)}" aria-label="Smazat příspěvek" title="Smazat příspěvek">${deleteIcon}</button>
-          </div>
-        </div></div>
-      </article>`;
-    }).join('');
-    layoutObserver.disconnect();
-    arrangeCards();
-    layoutObserver.observe(cards);
-    for (const card of cards.children) layoutObserver.observe(card, {box: 'border-box'});
+    const sorted = [...rows].sort(newestFirst);
+    for (const category of categories) {
+      category.toggle.disabled = add.disabled;
+      category.list.parentElement.hidden = !category.toggle.checked;
+      const matching = cards.hidden || !category.toggle.checked
+        ? [] : sorted.filter(idea => categoryOf(idea) === category.label);
+      category.list.innerHTML = matching.length
+        ? matching.map(idea => renderCard(idea, category)).join('')
+        : '<p class="idea-empty">V této kategorii zatím nejsou žádné inspirace.</p>';
+    }
+  }
+
+  function renderCard(idea, category) {
+    const url = safeUrl(idea.url);
+    const author = authorName(idea.author_id);
+    const title = esc(idea.title);
+    const heading = url
+      ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${title}</a>`
+      : title;
+    return `<article class="card idea-card">
+      <h3>${heading}</h3>
+      <p class="card-format idea-category idea-category--${category.style}">${category.label}</p>
+      ${category.label === eventCategory && idea.event_date ? `<time class="meta-item idea-date" datetime="${esc(idea.event_date)}">${calendarIcon}<span>${esc(date(idea.event_date))}</span></time>` : ''}
+      <div class="idea-description">${renderDescription(idea.description)}</div>
+      <div class="cardfoot"><div class="person">${userIcon}<span>${esc(author)}</span>
+        <div class="cardactions">
+          <button type="button" data-edit-idea="${esc(idea.id)}" aria-label="Upravit příspěvek" title="Upravit příspěvek">${editIcon}</button>
+          <button type="button" data-delete-idea="${esc(idea.id)}" aria-label="Smazat příspěvek" title="Smazat příspěvek">${deleteIcon}</button>
+        </div>
+      </div></div>
+    </article>`;
   }
 
   async function load() {
@@ -220,11 +180,13 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
       editingId = null;
       deletingId = null;
       form.reset();
-      formatFilter.value = authorFilter.value = '';
+      for (const {toggle, list} of categories) {
+        toggle.checked = true;
+        list.replaceChildren();
+      }
       description.replaceChildren();
       descriptionRange = null;
       $('deleteIdeaName').textContent = '';
-      cards.replaceChildren();
     }
     if (!visible) return;
     if (account && (opening || accountChanged) && !busy) void load();
@@ -238,11 +200,13 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
     descriptionRange = null;
     editingId = idea?.id ?? null;
     $('ideaError').textContent = '';
-    $('ideaEditorTitle').textContent = idea ? 'Upravit příspěvek' : 'Přidat inspiraci';
+    $('ideaEditorTitle').textContent = idea ? 'Upravit příspěvek' : 'Přidat inspiraci na nástěnku';
     if (idea) {
-      for (const field of ['title', 'format', 'url']) form.elements[field].value = idea[field];
+      for (const field of ['title', 'url']) form.elements[field].value = idea[field];
+      form.elements.format.value = categoryOf(idea);
       form.elements.event_date.value = idea.event_date ?? '';
     }
+    syncEventDate();
     editor.showModal();
   }
 
@@ -262,7 +226,12 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
     });
   }
 
-  formatFilter.onchange = authorFilter.onchange = render;
+  function syncEventDate() {
+    form.elements.event_date.disabled = form.elements.format.value !== eventCategory;
+  }
+
+  form.elements.format.onchange = syncEventDate;
+  for (const {toggle} of categories) toggle.onchange = render;
   retry.onclick = () => { if (account && !busy) void load(); };
   add.onclick = () => openEditor();
   cards.addEventListener('click', event => {
@@ -286,8 +255,20 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
     const id = editingId;
     const data = new FormData(form);
     const payload = Object.fromEntries(['title', 'format', 'url'].map(field => [field, data.get(field).trim()]));
-    payload.event_date = data.get('event_date') || null;
+    const selectedCategory = payload.format;
     const error = $('ideaError');
+    if (![eventCategory, resourceCategory].includes(selectedCategory)) {
+      error.textContent = 'Vyberte kategorii inspirace.';
+      return;
+    }
+    const original = rows.find(idea => idea.id === id);
+    const sameCategory = original && categoryOf(original) === selectedCategory;
+    payload.event_date = selectedCategory === eventCategory
+      ? data.get('event_date') || null
+      : sameCategory ? original.event_date ?? null : null;
+    if (sameCategory && categoryOf({...payload, format: original.format}) === selectedCategory) {
+      payload.format = original.format;
+    }
     const plainDescription = description.innerText.trim();
     if (!payload.title || !plainDescription || (payload.url && !safeUrl(payload.url))) {
       error.textContent = 'Vyplňte název a popis. Odkaz musí začínat https:// nebo http://.';
