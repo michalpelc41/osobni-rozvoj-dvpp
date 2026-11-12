@@ -331,7 +331,7 @@ body.signed-out #auth {
 .auth-brand {
   grid-column: 1 / -1;
   margin: 0;
-  padding: 18px clamp(20px, 4vw, 38px);
+  padding: 26px clamp(20px, 4vw, 38px) 18px;
   border-bottom: 0;
 }
 .auth-brand-title { font-size: clamp(17.85px, 2.55vw, 24.65px); color: #000; font-weight: 600; }

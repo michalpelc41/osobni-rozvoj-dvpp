@@ -1,4 +1,4 @@
-import {createIdeasBoard} from './ideas.js?v=20261112-idea-board';
+import {createIdeasBoard} from './ideas.js?v=20261112-csv-inspiration';
 import {createAttachmentController} from './attachments.js?v=20261106-attachments1';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -347,7 +347,38 @@ async function requestRecoveryEmail(){
  }
 }
 $('#forgot').onclick=requestRecoveryEmail;
-$('#export').onclick=()=>{const rows=[['Název','Datum','Garant DVPP','Forma','Místo','Odkaz','Popis','Reflexe','Náklady Kč','Stav','Celkové hodnocení'],...filtered().map(a=>[a.title,a.activity_date,person(a.user_id),formatLabel(a.format),a.location,a.url,a.description,reflectionPlainText(a.reflection),a.cost,labels[state(a)],a.rating||''])];const csv='\uFEFF'+rows.map(r=>r.map(v=>'"'+String(/^[=+\-@\t\r]/.test(String(v))?'\''+v:v).replaceAll('"','""')+'"').join(';')).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='osobni-rozvoj-dvpp.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+$('#export').onclick = async () => {
+  const account = getIdeasAccount();
+  if (!account) return;
+  const button = $('#export');
+  button.disabled = true;
+  try {
+    const activities = filtered().map(a => [
+      a.title, a.activity_date, person(a.user_id), formatLabel(a.format), a.location, a.url,
+      a.description, reflectionPlainText(a.reflection), a.cost, labels[state(a)], a.rating || '',
+      'Nástěnka aktivit',
+    ]);
+    const inspirations = await ideas.exportRows();
+    if (getIdeasAccount() !== account) return;
+    const header = ['Název', 'Datum', 'Garant DVPP', 'Forma', 'Místo', 'Odkaz', 'Popis',
+      'Reflexe', 'Náklady Kč', 'Stav', 'Celkové hodnocení', 'Záložka'];
+    const csv = '\uFEFF' + [header, ...activities, ...inspirations].map(row => row.map(value => {
+      const text = String(value ?? '');
+      const safeText = /^(?:\s*[=+\-@]|[\t\r\n])/.test(text) ? "'" + text : text;
+      return '"' + safeText.replaceAll('"', '""') + '"';
+    }).join(';')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv], {type: 'text/csv;charset=utf-8'}));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'osobni-rozvoj-dvpp.csv';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch {
+    if (getIdeasAccount() === account) toast('CSV se nepodařilo exportovat. Zkuste to znovu.');
+  } finally {
+    button.disabled = false;
+  }
+};
 async function init(){
  syncAuthView();
  if(demo){
@@ -398,8 +429,9 @@ async function init(){
   }
  }
 }
+const getIdeasAccount = () => !recoveryMode && user && (demo || approvedTeamAccount === user.id) ? user.id : null;
 const ideas = createIdeasBoard({
-  getAccount: () => !recoveryMode && user && (demo || approvedTeamAccount === user.id) ? user.id : null,
+  getAccount: getIdeasAccount,
   getDb: () => db,
   loadRows: () => allRows('dvpp_ideas', 'id, author_id, title, format, description, url, event_date, created_at', 'id'),
   demo,

@@ -110,6 +110,25 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
   });
 
   const authorName = id => id ? person(id) : 'Bývalý člen týmu';
+  const readRows = () => demo ? JSON.parse(localStorage.getItem(storageKey) || '[]') : loadRows();
+  const newestFirst = (a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id);
+
+  async function exportRows() {
+    const owner = getAccount();
+    if (!owner) return [];
+    const result = await readRows();
+    if (getAccount() !== owner) return [];
+    const text = document.createElement('template');
+    return result.sort(newestFirst).map(idea => {
+      text.innerHTML = renderDescription(idea.description)
+        .replace(/(?:<\/?(?:div|p|li)>)+/g, '\n')
+        .replaceAll('<br>', '\n');
+      return [
+        idea.title, idea.event_date, authorName(idea.author_id), idea.format,
+        '', idea.url, text.content.textContent.trim(), '', '', '', '', 'Nástěnka inspirací',
+      ];
+    });
+  }
 
   function render() {
     add.disabled = !account || loading || loadError;
@@ -135,9 +154,7 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
     else if (!rows.length) status.textContent = 'Zatím tu nejsou žádné příspěvky.';
     else if (!filtered.length) status.textContent = 'Zvoleným filtrům neodpovídá žádná inspirace.';
 
-    const sorted = filtered.sort((a, b) =>
-      b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id)
-    );
+    const sorted = filtered.sort(newestFirst);
     cards.innerHTML = sorted.map(idea => {
       const url = safeUrl(idea.url);
       const author = authorName(idea.author_id);
@@ -171,7 +188,7 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
     loadError = false;
     render();
     try {
-      const result = demo ? JSON.parse(localStorage.getItem(storageKey) || '[]') : await loadRows();
+      const result = await readRows();
       if (revision === request && getAccount() === owner) rows = result;
     } catch {
       if (revision === request && getAccount() === owner) {
@@ -337,5 +354,5 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
     }
   };
 
-  return {show};
+  return {show, exportRows};
 }
