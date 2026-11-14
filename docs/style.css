@@ -273,7 +273,7 @@ header .account #identity { color: var(--ink); }
 .card h3, .card h3 button, .timeline-content h3 button { color: #000; }
 .tablewrap td button[data-detail] { color: #000; }
 .card h3 { font-size: 18px; }
-.card .description { font-size: 14.95px; line-height: 1.6; }
+.card .description { font-size: 13.95px; line-height: 1.5; }
 .card-format, .timeline-format, .detail-format {
   width: fit-content;
   padding: 3px 8px;
