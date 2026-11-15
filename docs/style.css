@@ -302,6 +302,7 @@ header .account #identity { color: var(--ink); }
 }
 .sectionhead .tab[data-tab="stats"] { width: auto; }
 .sectionhead .tab.active { color: var(--green); background: var(--pale); }
+.sectionhead .tab[data-tab="board"].active { color: #00625B; }
 .filters input, .filters select, #authForm input {
   border: 1px solid #333;
   border-radius: 0;
