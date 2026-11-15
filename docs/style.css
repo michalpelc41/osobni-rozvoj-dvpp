@@ -620,12 +620,19 @@ body:not(.signed-out) {
 }
 
 .idea-card--elapsed {
-  background-color: #f2f2f2;
-  color: #494949;
+  color: #5a5a5a;
 }
 
-.idea-card--elapsed :is(h3, .idea-category, .idea-date, .cardactions button) {
+.idea-card--elapsed :is(h3, .idea-category, .idea-date) {
   color: inherit;
+}
+
+.idea-card--elapsed [data-edit-idea] {
+  color: #129793;
+}
+
+.idea-card--elapsed [data-delete-idea] {
+  color: #921D1D;
 }
 
 .idea-card--elapsed .idea-elapsed {
