@@ -1,4 +1,4 @@
-import {createIdeaReview} from './idea-review.js?v=review-table-v1';
+import {createIdeaReview} from './idea-review.js?v=review-search-v1';
 import {createIdeasBoard} from './ideas.js?v=20261112-idea-masonry';
 import {createAttachmentController} from './attachments.js?v=20261106-attachments1';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];

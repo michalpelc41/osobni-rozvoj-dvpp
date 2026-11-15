@@ -8,6 +8,8 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, toast}) {
   const summary = byId('reviewSummary');
   const list = byId('reviewItems');
   const reload = byId('reloadReview');
+  const search = byId('searchReview');
+  const searchStatus = byId('reviewSearchStatus');
   let account = null;
   let allowed = false;
   let visible = false;
@@ -32,7 +34,7 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, toast}) {
         <form data-review-id="${esc(item.id)}">
           <div class="review-actions">
             <button type="submit" class="quiet" value="reject">Zamítnout</button>
-            <button type="submit" class="primary" value="approve">Vložit na nástěnku inspirací</button>
+            <button type="submit" class="primary" value="approve">Vložit na nástěnku</button>
           </div>
           <p class="review-feedback" role="status" hidden></p>
         </form>
@@ -88,6 +90,29 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, toast}) {
   }
 
   reload.onclick = refresh;
+  search.onclick = async () => {
+    if (!allowed || !visible || search.disabled) return;
+    const owner = account;
+    search.disabled = true;
+    searchStatus.hidden = false;
+    searchStatus.textContent = 'Hledám další inspirace…';
+    try {
+      const {data, error} = await getDb().functions.invoke('dvpp-review', {body: {}});
+      if (owner !== account) return;
+      if (error || !Number.isInteger(data?.added)) throw Error();
+      searchStatus.textContent = [
+        'V dostupných zdrojích se nenašly další inspirace.',
+        'Přibyla 1 nová inspirace.',
+        'Přibyly 2 nové inspirace.',
+        'Přibyly 3 nové inspirace.',
+      ][data.added];
+      await refresh();
+    } catch {
+      if (owner === account) searchStatus.textContent = 'Hledání se nepodařilo dokončit. Zkus to znovu.';
+    } finally {
+      if (owner === account) search.disabled = false;
+    }
+  };
   list.addEventListener('submit', async event => {
     const form = event.target;
     if (!form.matches('[data-review-id]')) return;
@@ -145,6 +170,9 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, toast}) {
       setCount(0);
       list.replaceChildren();
       summary.textContent = '';
+      search.disabled = false;
+      searchStatus.hidden = true;
+      searchStatus.textContent = '';
       button.hidden = true;
       if (account) {
         const owner = account;
