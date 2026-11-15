@@ -150,6 +150,19 @@ function timelineMarkup(list){
  }
  if(!marked)html+=marker();return html+'</div>';
 }
+function renderBoardSummary(list) {
+ const n = list.length;
+ const personal = Boolean($('#owner').value);
+ const few = n >= 2 && n <= 4;
+ const activitiesLabel = personal
+  ? (n === 1 ? 'rozvojovou aktivitu' : few ? 'rozvojové aktivity' : 'rozvojových aktivit')
+  : (n === 1 ? 'aktivita' : few ? 'aktivity' : 'aktivit');
+ $('#resultPrefix').textContent = personal ? 'Na nástěnce máte aktuálně ' : '';
+ $('#resultCount').textContent = `${n} ${activitiesLabel}`;
+ $('#resultDetail').textContent = personal
+  ? `. Z toho naplánováno: ${list.filter(activity => state(activity) === 'planned').length}.`
+  : ' · rozvojové aktivity celého týmu DVPP';
+}
 function render(){
  if(tab === 'review' && !getReviewAccount()) tab = 'board';
  syncAuthView();
@@ -159,7 +172,7 @@ function render(){
   $('#activityFilters').hidden=true;
   $('#addButton').hidden=true;
  }
-const list=filtered();const n=list.length,done=list.filter(a=>state(a)==='done').length;$('#total').textContent=n;$('#people').textContent=new Set(list.map(a=>a.user_id)).size;$('#reflections').textContent=done;$('#reflectionRate').textContent=n?Math.round(done/n*100)+' % z vybraných aktivit':'Zatím žádné aktivity';$('#cost').textContent=money(list.reduce((s,a)=>s+Number(a.cost),0));$('#resultCount').textContent=`${n} ${n===1?'aktivita':n>=2&&n<=4?'aktivity':'aktivit'}`;$('#board').hidden=tab!=='board';$('#stats').hidden=tab!=='stats';$$('[data-tab]').forEach(button => {
+const list=filtered();const n=list.length,done=list.filter(a=>state(a)==='done').length;$('#total').textContent=n;$('#people').textContent=new Set(list.map(a=>a.user_id)).size;$('#reflections').textContent=done;$('#reflectionRate').textContent=n?Math.round(done/n*100)+' % z vybraných aktivit':'Zatím žádné aktivity';$('#cost').textContent=money(list.reduce((s,a)=>s+Number(a.cost),0));renderBoardSummary(list);$('#board').hidden=tab!=='board';$('#stats').hidden=tab!=='stats';$$('[data-tab]').forEach(button => {
   const active = button.dataset.tab === tab;
   button.classList.toggle('active', active);
   button.setAttribute('aria-pressed', String(active));

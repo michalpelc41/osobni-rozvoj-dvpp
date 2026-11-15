@@ -159,6 +159,12 @@ header .account #identity{color:#307e72}
 .sectionhead nav{gap:0;min-width:0}
 .sectionhead .tab{padding-left:12px;padding-right:12px}
 .section-actions{display:flex;gap:16px;align-items:center;margin-left:auto;padding-bottom:6px}
+.section-actions :is(#addButton, #addIdea) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.section-actions button svg { width: 16px; height: 16px; flex: none; }
 .brand-copy{color:#129783}
 .rich-editor{background:#fff;border:1px solid #d2dad3;border-radius:7px;padding:10px 11px;min-height:98.8px;max-height:350px;overflow-y:auto;margin-top:6px;color:var(--ink);font-size:13px;font-weight:400;outline-offset:3px}
 .rich-editor:empty:before{content:attr(data-placeholder);color:#757575;pointer-events:none}
@@ -174,7 +180,7 @@ header .account #identity{color:#307e72}
 #clearRating{font-size:11px;padding:5px 8px}#ratingValue{font-size:12px;color:var(--muted)}
 .activity-rating{display:flex;gap:3px;align-items:center;margin:0 0 14px}
 .activity-rating svg{width:18px;height:18px;fill:transparent;stroke:#aebbb3;stroke-width:1.4;display:block}
-.card .activity-rating{margin-top:auto}.card .cardfoot{margin-top:0}
+#activities .card .description { margin-bottom: 10px; }
 @media(max-width:650px){.sectionhead .tab{padding-left:8px;padding-right:8px}.section-actions{gap:8px}.section-actions #addButton{font-size:12px;padding:9px 10px}.sectionhead{gap:8px}.section-actions #updated{display:none}}
 
 
