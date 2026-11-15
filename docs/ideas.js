@@ -37,6 +37,8 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
   let loadError = false;
   let busy = false;
   let descriptionRange = null;
+  let previewRender = 0;
+  const previewCache = new Map();
 
   function renderDescription(value) {
     return value.startsWith(richPrefix) ? cleanRichHtml(value.slice(richPrefix.length)) : esc(value);
@@ -139,6 +141,7 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
     const matching = rows
       .map(idea => ({idea, category: enabled.find(category => category.label === categoryOf(idea))}))
       .filter(({category}) => category);
+    const previewRevision = ++previewRender;
     status.textContent = '';
     if (!account) status.textContent = 'Inspirace jsou dostupné členům týmu DVPP.';
     else if (loading) status.textContent = 'Načítání příspěvků…';
@@ -149,8 +152,8 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
 
     const sort = enabled.length === 1 && enabled[0].label === eventCategory ? earliestEventFirst : newestFirst;
     layoutObserver.disconnect();
+    matching.sort((a, b) => sort(a.idea, b.idea));
     cards.innerHTML = cards.hidden ? '' : matching
-      .sort((a, b) => sort(a.idea, b.idea))
       .map(({idea, category}) => renderCard(idea, category)).join('');
     if (!cards.hidden) {
       const width = cards.getBoundingClientRect().width;
@@ -159,6 +162,59 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
       if (cards.getBoundingClientRect().width !== width) layoutCards();
       layoutObserver.observe(cards);
       for (const card of cards.children) layoutObserver.observe(card, {box: 'border-box'});
+      if (!demo && !section.hidden) void loadPreviews(matching, previewRevision);
+    }
+  }
+
+  async function loadPreviews(matching, revision) {
+    const owner = account;
+    const isCurrent = () => revision === previewRender && account === owner && getAccount() === owner
+      && !section.hidden;
+    const entries = Array.from(cards.children, (card, index) => ({
+      idea: matching[index].idea,
+      link: card.querySelector('h3 a'),
+    })).filter(({link}) => link);
+
+    for (let start = 0; start < entries.length && isCurrent(); start += 4) {
+      const batch = entries.slice(start, start + 4);
+      const pending = batch.filter(({idea}) => previewCache.get(idea.id)?.url !== idea.url);
+      if (pending.length) {
+        try {
+          const {data, error} = await getDb().functions.invoke('dvpp-idea-previews', {
+            body: {ids: pending.map(({idea}) => idea.id)},
+          });
+          if (!isCurrent() || error || !Array.isArray(data?.previews)) return;
+          for (const preview of data.previews) {
+            if (pending.some(({idea}) => idea.id === preview.id && idea.url === preview.url)) {
+              previewCache.set(preview.id, preview);
+            }
+          }
+        } catch {
+          return;
+        }
+      }
+
+      for (const {idea, link} of batch) {
+        const cached = previewCache.get(idea.id);
+        const imageUrl = cached?.url === idea.url && safeUrl(cached.image);
+        if (!imageUrl || !imageUrl.startsWith('https://')) continue;
+
+        const image = new Image();
+        image.alt = '';
+        image.decoding = 'async';
+        image.referrerPolicy = 'no-referrer';
+        image.onload = () => {
+          if (!isCurrent() || !link.isConnected) return;
+          const preview = link.cloneNode(false);
+          preview.className = 'idea-preview';
+          preview.tabIndex = -1;
+          preview.setAttribute('aria-hidden', 'true');
+          preview.append(image);
+          link.closest('article').prepend(preview);
+          layoutCards();
+        };
+        image.src = imageUrl;
+      }
     }
   }
 
@@ -217,6 +273,7 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
       account = nextAccount;
       request++;
       rows = [];
+      previewCache.clear();
       loading = false;
       loadError = false;
       editingId = null;
@@ -366,6 +423,7 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
       }
       if (getAccount() !== owner) return;
       rows = rows.filter(idea => idea.id !== id);
+      previewCache.delete(id);
       deleteDialog.close();
       render();
       toast('Příspěvek byl smazán.');

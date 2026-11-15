@@ -269,7 +269,7 @@ header .account #identity { color: var(--ink); }
   box-shadow: var(--kcv-shadow);
 }
 .metrics article:first-child { background: var(--pale); }
-.card { padding: clamp(19px, 2vw, 28px); }
+.card { --card-padding: clamp(19px, 2vw, 28px); padding: var(--card-padding); }
 .card h3, .card h3 button, .timeline-content h3 button { color: #000; }
 .tablewrap td button[data-detail] { color: #000; }
 .card h3 { font-size: 18px; }
@@ -612,6 +612,19 @@ body:not(.signed-out) {
   background: #f2f3f2;
   color: var(--muted);
   cursor: not-allowed;
+}
+
+.idea-preview {
+  display: block;
+  margin: calc(-1 * var(--card-padding)) calc(-1 * var(--card-padding)) 16px;
+}
+
+.idea-preview img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 5 / 2;
+  max-height: 150px;
+  object-fit: cover;
 }
 
 .idea-card h3 {
