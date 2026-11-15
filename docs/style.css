@@ -620,6 +620,7 @@ body:not(.signed-out) {
 }
 
 .idea-card--elapsed {
+  background-color: #f2f2f2;
   color: #494949;
 }
 
