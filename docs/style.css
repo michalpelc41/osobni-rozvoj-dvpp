@@ -681,8 +681,6 @@ body:not(.signed-out) {
 .review-header { display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:12px; margin:16px 0 24px; }
 .review-header h2 { margin:0; }
 .review-header p { margin:6px 0 0; }
-.review-controls { display:flex; flex-wrap:wrap; gap:8px; }
-.review-controls .quiet { background:#fff; }
 .review-header .review-search-status { flex-basis:100%; margin:0; }
 .review-tablewrap { overflow-x:auto; }
 .review-tablewrap table { min-width:680px; }
@@ -697,9 +695,9 @@ body:not(.signed-out) {
   border-bottom:1px solid var(--border);
 }
 .review-tablewrap :is(th, td) { vertical-align:top; overflow-wrap:anywhere; }
-.review-tablewrap tbody a { font-size:14px; color:inherit; text-underline-offset:0.15em; }
-.review-tablewrap .review-description { white-space:pre-line; }
-.review-actions { display:flex; flex-wrap:wrap; gap:6px; min-width:210px; }
+.review-tablewrap tbody a { font-size:14px; font-weight:600; color:inherit; text-underline-offset:0.15em; }
+.review-tablewrap tbody td.review-description { font-size:14px; white-space:pre-line; }
+.review-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:6px; min-width:210px; }
 .review-actions button { padding:7px 10px; font-size:13px; }
 .review-actions button[value="approve"] { font-weight:500; }
 .review-actions button[value="reject"] {

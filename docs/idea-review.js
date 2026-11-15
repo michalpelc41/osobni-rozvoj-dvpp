@@ -7,7 +7,6 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, toast}) {
   const badge = byId('reviewCount');
   const summary = byId('reviewSummary');
   const list = byId('reviewItems');
-  const reload = byId('reloadReview');
   const search = byId('searchReview');
   const searchStatus = byId('reviewSearchStatus');
   let account = null;
@@ -34,7 +33,7 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, toast}) {
         <form data-review-id="${esc(item.id)}">
           <div class="review-actions">
             <button type="submit" class="quiet" value="reject">Zamítnout</button>
-            <button type="submit" class="primary" value="approve">Vložit na nástěnku</button>
+            <button type="submit" class="primary" value="approve">Použít</button>
           </div>
           <p class="review-feedback" role="status" hidden></p>
         </form>
@@ -58,7 +57,6 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, toast}) {
   async function refresh() {
     const current = ++revision;
     if (visible) summary.textContent = 'Načítání návrhů…';
-    reload.disabled = true;
     try {
       const db = getDb();
       const requests = [
@@ -84,12 +82,9 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, toast}) {
       }
     } catch {
       if (current === revision && visible) summary.textContent = 'Přehled se nepodařilo načíst.';
-    } finally {
-      if (current === revision) reload.disabled = false;
     }
   }
 
-  reload.onclick = refresh;
   search.onclick = async () => {
     if (!allowed || !visible || search.disabled) return;
     const owner = account;
@@ -127,7 +122,6 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, toast}) {
     const owner = account;
     const buttons = [...form.querySelectorAll('button')];
     buttons.forEach(control => { control.disabled = true; });
-    reload.disabled = true;
     try {
       const result = await getDb().rpc('dvpp_decide_idea_review', {
         p_id: form.dataset.reviewId, p_approve: approve, p_edits: null,
@@ -156,7 +150,6 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, toast}) {
       if (owner === account) displayError('Rozhodnutí se nepodařilo uložit.');
     } finally {
       buttons.forEach(control => { control.disabled = false; });
-      reload.disabled = false;
     }
   });
 
