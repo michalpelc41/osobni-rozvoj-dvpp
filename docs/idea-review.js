@@ -1,6 +1,6 @@
 const timestamp = new Intl.DateTimeFormat('cs-CZ', {dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Prague'});
 
-export function createIdeaReview({getAccount, getDb, esc, safeUrl, date, toast}) {
+export function createIdeaReview({getAccount, getDb, esc, safeUrl, toast}) {
   const byId = id => document.getElementById(id);
   const section = byId('ideaReview');
   const button = byId('reviewTab');
@@ -22,35 +22,22 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, date, toast})
   }
 
   function renderItem(item) {
-    const url = safeUrl(item.source);
-    const source = url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Otevřít zdroj ↗</a>` : 'Bez zdrojového odkazu';
-    const draft = item.proposed;
-    const edit = `<details class="review-draft">
-      <summary>Zobrazit a upravit návrh</summary>
-      <label>Název<input name="title" value="${esc(draft.title)}" maxlength="200" required></label>
-      <div class="formgrid">
-        <label>Forma<select name="format">${[...byId('formatFilter').options].slice(1).map(option =>
-          `<option${option.value === draft.format ? ' selected' : ''}>${esc(option.value)}</option>`).join('')}</select></label>
-        <label>Termín konání<input name="event_date" type="date" value="${esc(draft.event_date)}"></label>
-      </div>
-      <label>Popis<textarea name="description" rows="4" maxlength="10000" required>${esc(draft.description)}</textarea></label>
-      <label>Odkaz<input name="url" type="url" value="${esc(draft.url)}" maxlength="2000" required></label>
-    </details>`;
-    return `<article class="panel review-item">
-      <form data-review-id="${esc(item.id)}" novalidate>
-        <h4>${esc(item.title)}</h4>
-        <p class="review-meta">${source} <span>· ${timestamp.format(new Date(item.checked_at))}</span></p>
-        ${item.note ? `<p>${esc(item.note)}</p>` : ''}
-        ${draft.event_date ? `<p>Termín konání · ${esc(date(draft.event_date))}</p>` : ''}
-        <p>${esc(draft.description)}</p>
-        ${edit}
-        <p class="review-feedback" role="status" hidden></p>
-        <div class="actions">
-          <button type="submit" class="quiet" value="reject">Zamítnout</button>
-          <button type="submit" class="primary" value="approve">Schválit a zveřejnit</button>
-        </div>
-      </form>
-    </article>`;
+    const url = safeUrl(item.proposed.url) || safeUrl(item.source);
+    const title = esc(item.proposed.title || item.title);
+    const link = url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${title}</a>` : title;
+    return `<tr>
+      <th scope="row">${link}</th>
+      <td class="review-description">${esc(item.proposed.description)}</td>
+      <td>
+        <form data-review-id="${esc(item.id)}">
+          <div class="review-actions">
+            <button type="submit" class="quiet" value="reject">Zamítnout</button>
+            <button type="submit" class="primary" value="approve">Vložit na nástěnku inspirací</button>
+          </div>
+          <p class="review-feedback" role="status" hidden></p>
+        </form>
+      </td>
+    </tr>`;
   }
 
   function renderItems(items) {
@@ -58,7 +45,12 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, date, toast})
       list.textContent = 'Žádné nové návrhy ke schválení.';
       return;
     }
-    list.innerHTML = `<section class="review-group" aria-label="Návrhy ke schválení"><div>${items.map(renderItem).join('')}</div></section>`;
+    list.innerHTML = `<div class="tablewrap review-tablewrap" tabindex="0" role="region" aria-label="Návrhy ke schválení">
+      <table>
+        <thead><tr><th scope="col">Název</th><th scope="col">Krátký popis</th><th scope="col">Akce</th></tr></thead>
+        <tbody>${items.map(renderItem).join('')}</tbody>
+      </table>
+    </div>`;
   }
 
   async function refresh() {
@@ -72,7 +64,7 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, date, toast})
       ];
       if (visible) requests.push(
         db.from('dvpp_idea_review_runs').select('checked_at,summary').eq('summary->>mode', 'external').order('week', {ascending: false}).limit(1).maybeSingle(),
-        db.from('dvpp_idea_review_items').select('id,title,proposed,source,note,checked_at')
+        db.from('dvpp_idea_review_items').select('id,title,proposed,source')
           .eq('kind', 'new').eq('decision', 'pending').order('checked_at', {ascending: false}).order('id').limit(100),
       );
       const [count, run, items] = await Promise.all(requests);
@@ -96,39 +88,29 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, date, toast})
   }
 
   reload.onclick = refresh;
-  list.addEventListener('keydown', event => {
-    if (event.key === 'Enter' && !event.isComposing && event.target.matches('input:not([type="date"])')) {
-      event.preventDefault();
-    }
-  });
   list.addEventListener('submit', async event => {
     const form = event.target;
     if (!form.matches('[data-review-id]')) return;
     event.preventDefault();
     if (!allowed || !visible || !event.submitter) return;
     const approve = event.submitter.value === 'approve';
-    const edits = approve ? Object.fromEntries(new FormData(form)) : null;
     const feedback = form.querySelector('.review-feedback');
     const displayError = message => {
       feedback.hidden = false;
       feedback.textContent = message;
     };
-    if (edits && (!edits.title.trim() || !edits.description.trim() || !safeUrl(edits.url) || !form.checkValidity())) {
-      displayError('Vyplňte název, popis a platný odkaz.');
-      return;
-    }
     const owner = account;
     const buttons = [...form.querySelectorAll('button')];
     buttons.forEach(control => { control.disabled = true; });
     reload.disabled = true;
     try {
       const result = await getDb().rpc('dvpp_decide_idea_review', {
-        p_id: form.dataset.reviewId, p_approve: approve, p_edits: edits,
+        p_id: form.dataset.reviewId, p_approve: approve, p_edits: null,
       });
       if (owner !== account) return;
       if (result.error) throw result.error;
       if (result.data === 'invalid') {
-        displayError('Zadejte platný odkaz mimo web kcv.cz.');
+        displayError('Tento návrh nemá platný odkaz mimo web kcv.cz.');
         return;
       }
       if (result.data === 'duplicate') {
@@ -136,12 +118,12 @@ export function createIdeaReview({getAccount, getDb, esc, safeUrl, date, toast})
         return;
       }
       if (!['approved', 'rejected', 'resolved'].includes(result.data)) throw Error();
-      const group = form.closest('.review-group');
-      form.closest('article').remove();
-      if (!group.querySelector('article')) group.remove();
+      form.closest('tr').remove();
       setCount(Math.max(0, pending - 1));
-      if (!list.children.length && pending) void refresh();
-      else if (!list.children.length) renderItems([]);
+      if (!list.querySelector('tbody tr')) {
+        renderItems([]);
+        if (pending) void refresh();
+      }
       if (result.data === 'approved') toast('Inspirace byla zveřejněna.');
       else if (result.data === 'rejected') toast('Návrh byl zamítnut.');
       else toast('Položka už byla vyřízena.');
