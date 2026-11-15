@@ -619,6 +619,19 @@ body:not(.signed-out) {
   overflow-wrap: anywhere;
 }
 
+.idea-card--elapsed {
+  color: #494949;
+}
+
+.idea-card--elapsed :is(h3, .idea-category, .idea-date, .cardactions button) {
+  color: inherit;
+}
+
+.idea-card--elapsed .idea-elapsed {
+  color: #a62b36;
+  font-weight: 600;
+}
+
 .idea-card h3 a {
   color: inherit;
   text-decoration: none;

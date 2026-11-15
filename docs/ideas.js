@@ -9,7 +9,7 @@ const storageKey = 'dvpp-demo-ideas';
 const editIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z"/><path d="m14 5 5 5"/></svg>';
 const deleteIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg>';
 
-export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUrl, person, userIcon, calendarIcon, date, toast, richPrefix, cleanRichHtml}) {
+export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUrl, person, userIcon, calendarIcon, date, today, toast, richPrefix, cleanRichHtml}) {
   const $ = id => document.getElementById(id);
   const section = $('ideas');
   const status = $('ideasStatus');
@@ -149,9 +149,10 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
 
     const sort = enabled.length === 1 && enabled[0].label === eventCategory ? earliestEventFirst : newestFirst;
     layoutObserver.disconnect();
+    const day = today();
     cards.innerHTML = cards.hidden ? '' : matching
       .sort((a, b) => sort(a.idea, b.idea))
-      .map(({idea, category}) => renderCard(idea, category)).join('');
+      .map(({idea, category}) => renderCard(idea, category, day)).join('');
     if (!cards.hidden) {
       const width = cards.getBoundingClientRect().width;
       layoutCards();
@@ -162,17 +163,19 @@ export function createIdeasBoard({getAccount, getDb, loadRows, demo, esc, safeUr
     }
   }
 
-  function renderCard(idea, category) {
+  function renderCard(idea, category, day) {
+    const eventDate = category.label === eventCategory ? idea.event_date : null;
+    const elapsed = Boolean(eventDate && eventDate < day);
     const url = safeUrl(idea.url);
     const author = authorName(idea.author_id);
     const title = esc(idea.title);
     const heading = url
       ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${title}</a>`
       : title;
-    return `<article class="card idea-card">
+    return `<article class="card idea-card${elapsed ? ' idea-card--elapsed' : ''}">
       <h3>${heading}</h3>
       <p class="card-format idea-category idea-category--${category.style}">${category.label}</p>
-      ${category.label === eventCategory && idea.event_date ? `<time class="meta-item idea-date" datetime="${esc(idea.event_date)}">${calendarIcon}<span>${esc(date(idea.event_date))}</span></time>` : ''}
+      ${eventDate ? `<time class="meta-item idea-date" datetime="${esc(eventDate)}">${calendarIcon}<span>${esc(date(eventDate))}</span>${elapsed ? '<span class="idea-elapsed">proběhlo</span>' : ''}</time>` : ''}
       <div class="idea-description">${renderDescription(idea.description)}</div>
       <div class="cardfoot"><div class="person">${userIcon}<span>${esc(author)}</span>
         <div class="cardactions">

@@ -1,5 +1,5 @@
 import {createIdeaReview} from './idea-review.js?v=review-polish-v1';
-import {createIdeasBoard} from './ideas.js?v=20261112-idea-masonry';
+import {createIdeasBoard} from './ideas.js?v=idea-elapsed-v1';
 import {createAttachmentController} from './attachments.js?v=20261106-attachments1';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -451,6 +451,7 @@ const ideas = createIdeasBoard({
   userIcon,
   calendarIcon,
   date,
+  today,
   toast,
   richPrefix,
   cleanRichHtml: cleanReflectionHtml,
