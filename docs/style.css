@@ -47,6 +47,7 @@ header .account #identity{font-weight:600;text-align:right}
 .metrics #cost{font-size:20px;letter-spacing:-.5px}
 .cardactions button{width:28.8px;height:28.8px;padding:6.4px;display:inline-flex;align-items:center;justify-content:center}
 .cardactions svg{width:14.4px;height:14.4px;pointer-events:none}
+#detailContent .cardactions button { width: auto; gap: 6px; padding-inline: 9px; }
 
 .cardfoot .person{flex-wrap:wrap}
 .cardfoot>b{white-space:nowrap}
