@@ -47,7 +47,14 @@ header .account #identity{font-weight:600;text-align:right}
 .metrics #cost{font-size:20px;letter-spacing:-.5px}
 .cardactions button{width:28.8px;height:28.8px;padding:6.4px;display:inline-flex;align-items:center;justify-content:center}
 .cardactions svg{width:14.4px;height:14.4px;pointer-events:none}
-#detailContent .cardactions button { width: auto; gap: 6px; padding-inline: 9px; }
+#detailContent .cardactions button {
+  width: auto;
+  height: 33.12px;
+  gap: 6.9px;
+  padding-inline: 10.35px;
+  font-size: 12.65px;
+}
+#detailContent .cardactions button svg { width: 16.56px; height: 16.56px; }
 
 .cardfoot .person{flex-wrap:wrap}
 .cardfoot>b{white-space:nowrap}
@@ -161,6 +168,10 @@ header .account #identity{color:#307e72}
   margin-bottom: 18px;
 }
 .reflection-help-link:hover { background: transparent; }
+#reflectionHelp { border-radius: 0; padding: 30px; }
+@media (max-width: 650px) {
+  #reflectionHelp { padding: 20px; }
+}
 #reflectionHelp p + p { margin-top: 12px; }
 #reflectionHelp ol { padding-inline-start: 24px; }
 #reflectionHelp li + li { margin-top: 8px; }
@@ -416,6 +427,8 @@ main { padding-top: 4px; }
 .timeline-location { color: var(--kcv-heading-teal); font-weight: 600; }
 .card .meta-item .meta-icon, .timeline-location .meta-icon { stroke-width: 2.2; }
 .detail-icon-row { display: flex; align-items: flex-start; gap: 7px; }
+#detailContent .detailbody > a.detail-icon-row { margin-top: 5px; }
+#detailContent .dialoghead .tag { font-size: 14px; }
 .detail-icon-row svg { width: 1.2em; height: 1.2em; flex: none; }
 .detail-author { font-weight: 600; }
 #detailContent .detail-reflection-heading { font-size: 16.5px; }
